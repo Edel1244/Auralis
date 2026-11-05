@@ -7,7 +7,7 @@
                     "build":  "next build",
                     "start":  "next start",
                     "lint":  "eslint",
-                    "typecheck":  "tsc --noEmit",
+                    "typecheck":  "next typegen \u0026\u0026 tsc --noEmit",
                     "test":  "vitest run",
                     "db:start":  "pglite-server --db=.data/pglite --port=5433 -m 20",
                     "db:migrate":  "prisma migrate dev",
