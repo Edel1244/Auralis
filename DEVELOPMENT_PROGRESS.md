@@ -1,95 +1,106 @@
 # AURALIS: Development Progress
 
-_Last updated: 2026-11-05_
+_Last updated: 2026-11-06. All seven phases complete._
 
-## Stack and decisions
-- **Next.js 16 (App Router) + TypeScript + Tailwind v4**: a single app with a versioned REST API under `/api/v1` and modular server code in `src/server/modules/*`.
-- **PostgreSQL + Prisma 6.** Local development uses embedded Postgres (PGlite): `npm run db:start` serves it on port 5433, so Docker isn't needed.
-- **Auth:** argon2id password hashing, opaque session tokens stored as SHA-256 hashes, httpOnly SameSite=Lax cookies, plus an Origin check on every mutating request.
-- **Storage:** a pluggable driver (local disk or any S3-compatible service). Audio is only reachable through `/api/v1/tracks/:id/stream`, which checks authorization and supports HTTP Range requests.
-- **Audio engine** (`src/audio`): independent of React. It uses two `<audio>` slots feeding a Web Audio graph (10-band EQ, bass and treble shelves, stereo balance, analyser) and supports equal-power crossfade and near-gapless playback.
-- **i18n:** a central typed dictionary in English and Turkish. The Turkish dictionary must cover every key, and the TypeScript compiler enforces this.
-- **License:** AGPL-3.0 (planned; the LICENSE file is not written yet).
+Legend: ✅ implemented and verified · ☑️ implemented, verified indirectly (API/unit test or smoke test only) · 🟡 partial (see note) · 📋 planned
 
-## Status
+## Verification summary
 
-### Implemented and verified
-- [x] Phase 1: project scaffold, folder structure, full database schema plus initial migration, design tokens, original logo/app icon/favicon/PWA manifest, splash screen, app shell (sidebar, top bar, mobile nav)
-- [x] Phase 2: register, login, logout, email verification, password reset, sessions, profile/avatar/banner/privacy/preferences/account APIs, follow API, rate limiting, mail outbox. In the browser, registration (first user becomes admin) and email verification were tested end to end.
-- [x] Unit tests (26, all passing): queue logic, audio file-type detection, HTTP Range parsing, recommendation scoring, BPM/peaks/RMS analysis
+| Check | Result |
+|---|---|
+| TypeScript (`tsc --noEmit`) | 0 errors |
+| ESLint | 0 errors, 0 warnings |
+| Unit tests (Vitest) | 38/38: queue, audio file-type detection, HTTP ranges, DSP/BPM, recommendations, studio math, theme validation, moderation rules |
+| End-to-end RBAC/moderation script | 37/37 (role denials, takedowns, strikes → auto-suspension, ban/unban, audit log) |
+| Production build (`next build`, standalone) | Clean, no warnings. Tested: pages, login cookie flags, Range streaming, CSRF block, image processing, CSP with no violations, health endpoint |
+| Browser testing | Every page renders; upload → processing → playback, navigation without interruption, EQ effect measured, studio flows, themes, settings, dashboards; no horizontal overflow at 375 px on 12 key pages |
+| Dependency audit | `npm audit --omit=dev`: 0 vulnerabilities; 478 packages, all AGPL-compatible licenses |
+| Docker | 🟡 `Dockerfile`, `docker-compose.yml` and entrypoint are written. The standalone runtime and the migration tooling they use were validated locally, but **the images were not built**, because Docker isn't installed on the development machine |
 
-- [x] Phase 3 (verified 2026-11-06):
-  - Upload pipeline (API tested with a generated WAV): 201 → background processing → READY with duration/codec; duplicate → 409; spoofed `.mp3` → 415
-  - Streaming: HTTP 206 range responses; private audio returns 404 to anonymous users and 206 to the owner
-  - In the browser: uploaded audio plays, playback continues across page navigation, Media Session metadata is set, the listen is recorded in history (24 s, completed), and the queue/position is restored after reload
-  - APIs: comments, playlist create/add (dedupes, ignores invalid IDs)/visibility/background, likes, reports, search
-  - Pages rendered and checked: Home, Explore, Genre, Track, Playlist, Profile, Search, History, Uploads (edit dialog)
-- [~] Built but only smoke-tested (route loads without error): Album, Library, Favorites, Notifications pages; drag-and-drop playlist reorder, collaborators dialog and profile editing UI not yet clicked through
-- [~] Browser-side upload UI (drag & drop + client waveform/loudness/BPM analysis) not yet clicked through; the API it calls is verified
+## Requirements checklist
 
-- [x] Phase 4 (verified 2026-11-06):
-  - **Equalizer page:** 10-band EQ, built-in presets plus custom presets saved to the account (`/me/eq-presets`, API returned 201), preamp, bass boost, treble, balance, live spectrum analyzer, and playback settings (crossfade 0–12 s, normalization, gapless, quality, speed). Measured in the browser: Treble Booster raised high-band analyser energy about 68% over Flat.
-  - **Mixing Studio** (`src/audio/studio`): two decks streaming through `<audio>` elements, with key lock via the browser's native time-stretch.
-    - Per deck: gain, 3-band EQ with kill, low/high-pass filter sweep, beat-synced echo, pitch shift independent of tempo, tempo ±16%, nudge, CDJ-style cue, 4 hot cues, beat loops (1–16).
-    - Mixer: equal-power crossfader, master level and meter, mix recording via MediaRecorder, saved sessions (`/mixes`).
-  - **Studio checks in the browser:** BPM detected as 127.9 and 119.8 (true values 128 and 120); Sync matched deck B to 127.9; a 4-beat loop held its position; recording produced a WebM file; a saved session restored both tracks, the synced tempo and the crossfader.
-  - **Pitch shifter**, tested offline on a 440 Hz sine: +12 / −12 / +7 semitones gave 882 / 221 / 658 Hz (expected 880 / 220 / 659), with constant loudness.
-  - **Export policy:** you can download a recorded mix only when every track used is your own upload, public domain or Creative Commons. This check runs in the browser and is documented as such.
+### 1. Brand & design
+- ✅ Original logo (wave-crossbar "A" in an aura ring), app icon, favicon, Apple/PWA icons, wordmark, animated loading mark, splash screen ([docs/BRAND.md](docs/BRAND.md))
+- ✅ Azure Blue `#008CFF` / Deep Black `#080B10` / Charcoal `#111720` / Cyan accent palette as runtime tokens
+- ✅ Desktop-first and responsive, mobile mini-player and bottom nav, full-screen player, empty states, skeletons, hover effects, motion (respects reduced motion), accessible components (names checked; focus-trapped dialogs)
+- ✅ Centralized, typed i18n: English + Turkish, switchable in settings and on the landing page, saved to the account
+- 📋 Custom brand illustrations beyond the logo/hero graphics
 
-- [x] Phase 5 (verified 2026-11-06):
-  - **Settings → Account:** profile summary, language, change password (signs out other sessions), change email (re-verification), active sessions with sign-out, delete account (password + type username to confirm)
-  - **Settings → Privacy:** private profile, show statistics, show who I follow, show listening activity (adds a "recently played" section to the profile), clear search or listening history. Checked as an anonymous visitor: with listening activity off, recently played is hidden while stats stay visible.
-  - **Settings → Appearance:**
-    - Live editor: mode (dark/light/system), primary, accent, background and surface colors, ambient gradients, density, motion, font, corner radius, player style, sidebar
-    - Presets, JSON import (validated) and export, a live preview card, save to account and publish to the gallery, plus your saved and installed themes
-    - Theme syncs to the account: confirmed via `/auth/me` after changes
-  - **Community Themes gallery (`/themes`):** popular/new sort, search, temporary preview (reverts when stopped), install (counts installs and applies the theme), report
-  - **Language:** switching to Turkish updated the whole UI and was saved to both the account and a cookie
-  - **Security:** theme tokens are strict hex colors, enums and ranges only; a CSS-injection attempt returned 422 (unit-tested)
-  - **Fixed:**
-    - Switching dark/light kept a preset's custom background, so text became unreadable; mode changes now reset background/surface
-    - Cramped preset cards
+### 2. Development philosophy
+- ✅ Built in phases with tests after each; no fake buttons or pages. Limitations are listed below.
 
-- [x] Phase 6 (verified 2026-11-06):
-  - **Artist dashboard** (`/artist`): totals; 30-day plays, listeners, new followers and completion rate; daily plays and minutes charts; top tracks. Only aggregates are shown and the artist's own listens are excluded. Confirmed with a second account's listen.
-  - **Moderation** (`/moderation`, moderator+):
-    - Report queue: status filters, preview of the reported item, report count per item, take/dismiss/remove with a note and optional copyright strike
-    - Copyright claims: uphold (takedown + strike) or reject
-    - Upload review: remove/restore
-    - Read-only audit log
-  - **Copyright takedown form** (`/copyright`): no account needed; good-faith statement required; rate limited; linked from track pages and About
-  - **Repeat-infringer policy:** 3 upheld strikes automatically suspend a regular user for 30 days, with a notification
-  - **Admin** (`/admin`, admin only):
-    - Overview: users, tracks, plays, storage, open reports/claims, job queue, 14-day upload/play/sign-up charts, largest storage users
-    - User management: search/filter; suspend/unsuspend (moderators too); ban/unban, role, quota, clear strikes (admins only)
-    - Genre management: create, recolor, (de)activate
-    - Audit log
-  - **Role checks happen on the server.** Moderators can't act on themselves or on equal/higher rank, and can't remove admins' content. The last active admin can't be demoted. Banning revokes all sessions.
-  - **End-to-end script, 37/37 passed:** role denials, report → removal → restore, anonymous claim and rejection, 3 strikes → auto-suspension (writes blocked, reads allowed), notifications, ban (session revoked, login blocked, profile hidden), unban, audit entries, stats. Quota is released when tracks are deleted.
+### 3. Authentication & accounts
+- ✅ Registration, login/logout, email verification, password reset, Argon2id, hashed sessions with sliding expiry, unique usernames
+- ✅ Account settings (password, email, sessions, delete account), profiles (avatar, banner, bio), public/private profiles, stats, follow/unfollow, followers/following lists, recently played, history, favorites, public playlists on profiles, personal library
 
-### Not built yet
-- [ ] Phase 7: full audit, production build check, Docker/Compose, README, LICENSE, CONTRIBUTING, CODE_OF_CONDUCT, SECURITY, API docs
-- [ ] Planned extras: Wrapped (yearly stats), Listening Rooms, offline mode, lyrics
+### 4. Player
+- ✅ Play/pause/prev/next/seek/volume/mute/shuffle/repeat one & all, queue (reorder/remove/play next/clear), recently played, history, persisted state, keyboard shortcuts, speed, gapless (near-gapless; see limitations), crossfade, mini, expanded and full-screen players, background playback via Media Session
+- ✅ 10-band EQ, bass boost, treble, balance, normalization, crossfade duration, visualizer (3 modes), spectrum analyzer, waveform
+- 🟡 Quality selection: the UI and API support alternate encodings, but no server-side transcoder is bundled (needs ffmpeg), so only originals exist and "High" falls back to the original
+- ✅ The engine is independent of the UI (`src/audio`)
 
-### Known limitations
-- BPM, waveform and loudness come from the browser at upload time; files uploaded via the raw API without `analysis` have no waveform/BPM (no server-side decoder without ffmpeg)
-- Search uses case-insensitive substring matching; swap in Postgres full-text or Meilisearch for large instances (`src/server/modules/search/service.ts`)
-- Rate limiting and the job queue are in-process (single-instance deployment)
-- Audio quality selection: only the original upload is stored. There is no server-side transcoding (that needs ffmpeg), so "High" falls back to the original file.
-- Studio beat sync matches tempo only. Phase alignment is manual (nudge), because no downbeat detection is implemented.
-- The studio decodes each loaded track in full to draw the waveform and detect BPM, so very long files use a lot of memory.
-- [ ] Phase 4: Equalizer page (engine support exists), Mixing Studio
-- [ ] Phase 5: theme editor UI (the theme engine exists), community themes, comments
-- [ ] Phase 6: artist dashboard, moderation/admin dashboards, notifications UI
-- [ ] Phase 7: full audit; end-to-end check that an uploaded file actually plays
-- [ ] Open-source files: LICENSE, CONTRIBUTING, CODE_OF_CONDUCT, SECURITY, Dockerfile, docker-compose.yml, API docs, README rewrite
+### 5. Uploads
+- ✅ Single, multiple and album uploads; title, artist, album, artwork, description, genre, tags, release date, visibility; edit and delete; metadata and duration extraction; waveform; artwork thumbnails (WebP)
+- ✅ Progress, size limits, quotas, file-type check by content, duplicate detection, background processing, secure file handling, permissions, rate limits
+- ✅ Copyright: reports, moderation, takedown form, repeat-infringer policy (3 strikes), ownership/license records; public ≠ cleared
 
-## Running locally
-```
-npm install
-npm run db:start      # terminal 1 (embedded Postgres)
-npx prisma migrate dev
-npm run dev           # terminal 2 → http://localhost:3000
-npm test
-```
-On Windows PowerShell with script execution disabled, use `npm.cmd` instead of `npm`.
+### 6. Discovery & search
+- ✅ Search across songs, artists, albums, playlists, genres, profiles; instant results, suggestions, history, trending searches, filters (genre/year/duration)
+- ✅ Home: recently played, recommended, trending, community uploads, new releases, artists, genres, featured playlists, albums; Explore and genre pages
+- ✅ Modular recommendation engine (pluggable signals)
+
+### 7. Playlists
+- ✅ Create, rename, describe, cover, background, add/remove, drag-and-drop reorder (+ keyboard), sort, shuffle, duplicate, delete, visibility, share link, follow
+- ✅ Collaborative playlists with contributors and permissions (editor/viewer); "Recently added" sort
+- 🟡 Playlist folders: the field exists in the schema/API, but there's no folder UI yet
+- 📋 Smart playlists and automatic genre playlists (schema fields `kind`/`smartRules` reserved)
+
+### 8. Mixing Studio
+- ✅ Two decks, independent transport and volume, crossfader, tempo, independent pitch, key lock, BPM detection, tempo sync, waveforms, loops, cue + hot cues, 3-band EQ, filter, echo, save sessions, record and export (only for own, public-domain or CC tracks)
+- 🟡 Beat sync matches tempo only (no automatic phase alignment); nudge is provided
+
+### 9. Profiles & social
+- ✅ Customizable profiles, follow, like songs, follow/save playlists and albums, share links, comments (can be turned off per track), collaboration, discover users, privacy settings (private profile, stats, following, listening activity)
+- ✅ Notifications (follows, likes, comments, playlist activity, upload ready/failed, removals, account status, report outcomes)
+
+### 10. Customization
+- ✅ Primary/accent/background/surface colors, light/dark/system, gradients, player style, sidebar, fonts, density, motion, corner radius, live preview, saved to the account and restored on login
+- ✅ Community themes: create, export/import JSON, publish, gallery with preview, install and report
+
+### 11. Pages
+- ✅ All 25 requested sections exist and are functional: Landing, Login, Register, Home, Explore, Search, Library, Playlists (sidebar, library, `/playlist/:id`), Albums (`/album/:id`, library), Artists (artist profiles `/u/:username`), User profiles, Upload, Upload management, Mixing Studio, Equalizer, History, Favorites, Notifications, Account, Appearance, Privacy settings, Artist dashboard, Admin, Moderation, About
+- ➕ Also: Track, Genre, Community Themes, Copyright request, verify email, password reset
+
+### 12. Administration & moderation
+- ✅ Roles USER/MODERATOR/ADMIN enforced on the server; user list and management, suspend/ban, report review, content removal, genre management, upload review, platform statistics, storage monitoring, copyright complaint review, audit log
+
+### 13. Stack & architecture
+- ✅ Next.js 16, TypeScript, Tailwind v4, Motion, Node.js, PostgreSQL + Prisma, Web Audio API + HTML5 audio, S3-compatible and local storage, Docker + Compose, environment configuration
+- ✅ Modules, relations, indexes, validation, error handling, authorization, pagination, structured logging, caching headers; HTTP Range; private media protection
+- 🟡 Media Source Extensions were not needed: progressive `<audio>` with Range covers streaming and seeking
+
+### 14. Open source
+- ✅ README, LICENSE (AGPL-3.0), CONTRIBUTING, CODE_OF_CONDUCT, SECURITY, `.env.example`, Dockerfile, `docker-compose.yml`, migrations, API docs, architecture docs, THIRD_PARTY_LICENSES (generated), backup script, no hardcoded secrets
+
+### 15. Signature features
+- ✅ Artist Mode (dashboard), Community Themes, Advanced statistics (artist + admin + profile stats)
+- 📋 AURALIS Wrapped, Listening Rooms (synchronized listening), AI/mood discovery (a `mood` field exists), offline mode (PWA manifest exists, no service worker yet), lyrics (no licensed source integrated)
+
+### 16. Security & performance
+- ✅ Everything in [SECURITY.md](SECURITY.md): rate limits (per endpoint + global writes), CSRF, CSP and security headers, upload hardening, privacy controls, safe errors, audit and structured logs, backups (`scripts/backup.sh`)
+- ✅ Lazy image loading, WebP images, Range streaming, pagination, indexed queries, cached immutable images, rAF-isolated playhead re-renders
+
+## Known limitations
+- Single-instance defaults: in-memory rate limiter and job queue (swap points documented in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md))
+- Gapless playback is near-gapless (HTMLAudio switch on `ended`); crossfade is sample-accurate
+- No server-side transcoding or waveform generation for files uploaded through the raw API without browser analysis
+- Search uses substring matching (fine for small and medium instances)
+- The CSP allows inline scripts (required by Next.js); nonce-based CSP is planned
+- Dev database (PGlite): a single shared session, so `pgbouncer=true` is required and there are 20 connections max (`npm run db:start`). Production uses regular PostgreSQL.
+
+## Planned next
+1. Build and run the Docker images in CI (GitHub Actions: typecheck, lint, test, build, compose smoke test)
+2. Wrapped (yearly stats) and smart/genre playlists
+3. Optional ffmpeg worker for transcoding and server-side waveforms
+4. Listening Rooms (WebSocket sync)
+5. Service worker for offline playback of the user's own uploads

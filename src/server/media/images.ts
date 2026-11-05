@@ -1,5 +1,10 @@
 import "server-only";
-import sharp from "sharp";
+import type SharpType from "sharp";
+
+// Loaded on first use so that a missing native image library can only affect
+// image uploads, never server boot or unrelated API routes.
+let sharpPromise: Promise<typeof SharpType> | null = null;
+const loadSharp = () => (sharpPromise ??= import("sharp").then((m) => (m.default ?? m) as typeof SharpType));
 import { ApiError } from "../http";
 import { storage } from "../storage";
 import { randomToken } from "../security/crypto";
@@ -28,6 +33,7 @@ export async function readImageFile(file: FormDataEntryValue | null): Promise<Bu
  */
 export async function storeImage(buf: Buffer, kind: ImageKind, ownerId: string): Promise<string> {
   let out: Buffer;
+  const sharp = await loadSharp();
   try {
     const meta = await sharp(buf, { limitInputPixels: 50_000_000 }).metadata();
     if (!meta.format || !["jpeg", "png", "webp", "gif", "avif"].includes(meta.format)) throw new Error("format");

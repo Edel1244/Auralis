@@ -22,7 +22,7 @@ export async function sendMail(mail: Mail) {
     logger.info("mail_sent", { to: mail.to, subject: mail.subject });
     return;
   }
-  const dir = path.join(process.cwd(), ".data", "mail");
+  const dir = path.resolve(".data/mail");
   await mkdir(dir, { recursive: true });
   const file = path.join(dir, `${Date.now()}-${mail.to.replace(/[^a-z0-9@.]/gi, "_")}.eml`);
   const body = `From: ${MAIL_FROM}\nTo: ${mail.to}\nSubject: ${mail.subject}\n\n${mail.text}\n`;

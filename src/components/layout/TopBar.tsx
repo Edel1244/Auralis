@@ -36,7 +36,8 @@ function UserMenu() {
         onClick={() => setOpen((v) => !v)}
         aria-haspopup="menu"
         aria-expanded={open}
-        className="flex items-center gap-2 rounded-full border border-line bg-surface p-0.5 pr-3 hover:bg-surface-2"
+        aria-label={user.displayName}
+        className="flex items-center gap-2 rounded-full border border-line bg-surface p-0.5 hover:bg-surface-2 sm:pr-3"
       >
         <Avatar src={user.avatarUrl} name={user.displayName} size={30} />
         <span className="hidden max-w-32 truncate text-sm font-medium sm:block">{user.displayName}</span>
@@ -116,7 +117,7 @@ export function TopBar() {
   const { status } = useSession();
   return (
     <header className="sticky top-0 z-30 flex h-16 items-center gap-3 bg-bg/70 px-4 backdrop-blur-xl md:px-6">
-      <Link href="/home" className="md:hidden" aria-label="AURALIS home">
+      <Link href="/home" className="shrink-0 md:hidden" aria-label="AURALIS home">
         <LogoMark size={30} />
       </Link>
       <div className="hidden gap-1 md:flex">
@@ -129,12 +130,13 @@ export function TopBar() {
       </div>
       <button
         onClick={() => router.push("/search")}
-        className="flex h-10 max-w-md flex-1 items-center gap-2.5 rounded-full border border-line bg-surface px-4 text-left text-sm text-subtle transition-colors hover:border-primary/50"
+        aria-label={t("nav.search")}
+        className="flex h-10 min-w-0 max-w-md flex-1 items-center gap-2.5 rounded-full border border-line bg-surface px-4 text-left text-sm text-subtle transition-colors hover:border-primary/50"
       >
         <Search size={17} />
         <span className="truncate">{t("search.placeholder")}</span>
       </button>
-      <div className="ml-auto flex items-center gap-2">
+      <div className="ml-auto flex shrink-0 items-center gap-1 sm:gap-2">
         {status === "authenticated" && <NotificationBell />}
         {status === "authenticated" && <UserMenu />}
         {status === "anonymous" && (

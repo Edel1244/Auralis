@@ -10,7 +10,9 @@ export class LocalStorage implements StorageDriver {
   private root: string;
 
   constructor(dir: string) {
-    this.root = path.resolve(process.cwd(), dir);
+    // path.resolve() is relative to the working directory; avoiding an explicit
+    // process.cwd() keeps the build tracer from bundling the whole project.
+    this.root = path.resolve(dir);
   }
 
   /** Resolves a key inside the storage root, rejecting path traversal. */

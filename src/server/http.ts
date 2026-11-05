@@ -3,6 +3,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { ZodError, type ZodType } from "zod";
 import { Prisma } from "@prisma/client";
 import { logger } from "./logger";
+import { rateLimit } from "./security/rate-limit";
 
 export type ErrorCode =
   | "BAD_REQUEST"
@@ -110,11 +111,21 @@ function assertSameOrigin(req: NextRequest) {
 
 type Handler<C> = (req: NextRequest, ctx: C) => Promise<Response> | Response;
 
-/** Wraps a route handler with origin checks and uniform error handling. */
+/**
+ * Defense in depth: a generous per-IP ceiling on all state-changing requests,
+ * on top of the tighter per-endpoint limits (login, uploads, reports…).
+ */
+function globalWriteLimit(req: NextRequest) {
+  if (["GET", "HEAD", "OPTIONS"].includes(req.method)) return;
+  rateLimit(`write:${clientIp(req)}`, 600, 5 * 60 * 1000);
+}
+
+/** Wraps a route handler with origin checks, a global write limit and uniform error handling. */
 export function route<C = unknown>(fn: Handler<C>): Handler<C> {
   return async (req, ctx) => {
     try {
       assertSameOrigin(req);
+      globalWriteLimit(req);
       return await fn(req, ctx);
     } catch (err) {
       return errorResponse(err);

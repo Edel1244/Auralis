@@ -1,0 +1,14 @@
+# Never send local data, secrets or build output into the Docker build context.
+node_modules
+.next
+.data
+.env
+.env.*
+!.env.example
+.git
+.github
+.claude
+coverage
+*.log
+backups
+tests
