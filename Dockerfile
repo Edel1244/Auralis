@@ -24,13 +24,19 @@ RUN npx prisma generate && npm run build
 # ---- migrate: standalone Prisma CLI for `migrate deploy` at startup ----
 FROM node:${NODE_VERSION} AS migrate
 WORKDIR /opt/prisma
+# OpenSSL must be present so Prisma detects the same platform (openssl-3) as the runtime image.
+RUN apt-get update && apt-get install -y --no-install-recommends openssl ca-certificates && rm -rf /var/lib/apt/lists/*
 COPY prisma/schema.prisma ./schema.prisma
 # Running the CLI once at build time fetches the platform's schema engine into the
 # image, so containers never need network access to run migrations at startup.
+# `validate` only checks the schema; the placeholder URL satisfies env("DATABASE_URL")
+# and is never connected to (the real URL is provided at runtime).
 RUN npm init -y >/dev/null \
  && npm install --omit=dev --no-audit --no-fund prisma@6.19.3 \
  && node node_modules/prisma/build/index.js version \
- && node node_modules/prisma/build/index.js validate --schema=./schema.prisma
+ && DATABASE_URL="postgresql://build:build@localhost:5432/build" \
+    node node_modules/prisma/build/index.js validate --schema=./schema.prisma \
+ && rm schema.prisma
 
 # ---- runtime: minimal image ----
 FROM node:${NODE_VERSION} AS runtime
