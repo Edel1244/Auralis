@@ -17,6 +17,8 @@ RUN npm ci
 FROM node:${NODE_VERSION} AS build
 WORKDIR /app
 ENV NEXT_TELEMETRY_DISABLED=1
+# OpenSSL lets `prisma generate` detect the same platform (openssl-3) as the runtime image.
+RUN apt-get update && apt-get install -y --no-install-recommends openssl ca-certificates && rm -rf /var/lib/apt/lists/*
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 RUN npx prisma generate && npm run build
