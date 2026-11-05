@@ -32,6 +32,7 @@ type Content = {
   followers: PublicUser[] | null;
   following: PublicUser[] | null;
   listening: { minutes: number; listens: number } | null;
+  recentlyPlayed: Track[] | null;
 };
 type Tab = "overview" | "uploads" | "playlists" | "albums" | "followers" | "following";
 
@@ -232,6 +233,12 @@ export default function ProfilePage({ params }: PageProps<"/u/[username]">) {
                     }
                   />
                   <TrackList tracks={c.popular} source={user.displayName} />
+                </section>
+              )}
+              {c.recentlyPlayed && c.recentlyPlayed.length > 0 && (
+                <section>
+                  <SectionHeader title={t("home.recentlyPlayed")} />
+                  <TrackList tracks={c.recentlyPlayed} source={`${user.displayName} · ${t("home.recentlyPlayed")}`} />
                 </section>
               )}
               {c.playlists.length > 0 && (

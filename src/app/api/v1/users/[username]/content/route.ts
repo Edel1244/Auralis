@@ -20,7 +20,22 @@ export const GET = route<Ctx>(async (req, ctx) => {
   const privacy = privacyOf(user);
 
   const trackWhere = isSelf ? { ownerId: user.id, status: "READY" as const } : { ...publicTrackWhere, ownerId: user.id };
-  const [tracks, popular, albums, playlists, totals, followers, following, stats] = await Promise.all([
+  const recentlyPlayed =
+    privacy.showListening || isSelf
+      ? db.playEvent
+          .findMany({
+            where: { userId: user.id, track: publicTrackWhere },
+            orderBy: { playedAt: "desc" },
+            take: 40,
+            select: { trackId: true },
+          })
+          .then((ev) => [...new Set(ev.map((e) => e.trackId))].slice(0, 8))
+          .then(async (ids) => {
+            const rows = await findTracks({ id: { in: ids } }, viewer, { take: ids.length || 1 });
+            return ids.map((id) => rows.find((r) => r.id === id)).filter(Boolean);
+          })
+      : Promise.resolve(null);
+  const [tracks, popular, albums, playlists, totals, followers, following, stats, recent] = await Promise.all([
     findTracks(trackWhere, viewer, { take: 50 }),
     findTracks(trackWhere, viewer, { orderBy: [{ playCount: "desc" }], take: 5 }),
     db.album.findMany({
@@ -46,8 +61,10 @@ export const GET = route<Ctx>(async (req, ctx) => {
     privacy.showStats || isSelf
       ? db.playEvent.aggregate({ where: { userId: user.id }, _sum: { msPlayed: true }, _count: true })
       : Promise.resolve(null),
+    recentlyPlayed,
   ]);
   return json({
+    recentlyPlayed: recent,
     restricted: false,
     tracks,
     popular,

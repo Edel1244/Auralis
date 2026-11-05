@@ -36,9 +36,24 @@ _Last updated: 2026-11-05_
   - **Pitch shifter**, tested offline on a 440 Hz sine: +12 / −12 / +7 semitones gave 882 / 221 / 658 Hz (expected 880 / 220 / 659), with constant loudness.
   - **Export policy:** you can download a recorded mix only when every track used is your own upload, public domain or Creative Commons. This check runs in the browser and is documented as such.
 
+- [x] Phase 5 (verified 2026-11-06):
+  - **Settings → Account:** profile summary, language, change password (signs out other sessions), change email (re-verification), active sessions with sign-out, delete account (password + type username to confirm)
+  - **Settings → Privacy:** private profile, show statistics, show who I follow, show listening activity (adds a "recently played" section to the profile), clear search or listening history. Checked as an anonymous visitor: with listening activity off, recently played is hidden while stats stay visible.
+  - **Settings → Appearance:**
+    - Live editor: mode (dark/light/system), primary, accent, background and surface colors, ambient gradients, density, motion, font, corner radius, player style, sidebar
+    - Presets, JSON import (validated) and export, a live preview card, save to account and publish to the gallery, plus your saved and installed themes
+    - Theme syncs to the account: confirmed via `/auth/me` after changes
+  - **Community Themes gallery (`/themes`):** popular/new sort, search, temporary preview (reverts when stopped), install (counts installs and applies the theme), report
+  - **Language:** switching to Turkish updated the whole UI and was saved to both the account and a cookie
+  - **Security:** theme tokens are strict hex colors, enums and ranges only; a CSS-injection attempt returned 422 (unit-tested)
+  - **Fixed:**
+    - Switching dark/light kept a preset's custom background, so text became unreadable; mode changes now reset background/surface
+    - Cramped preset cards
+
 ### Not built yet: these sidebar links currently lead to 404 pages
-- [ ] Pages: Settings (account/privacy/appearance), Artist dashboard, Admin, Moderation, Community themes
-- [ ] APIs: admin/moderation endpoints (reports are collected but there's no review UI yet), copyright takedown claims, themes gallery
+- [ ] Pages: Artist dashboard, Admin, Moderation
+- [ ] APIs: admin/moderation endpoints (reports are collected but there's no review UI yet), copyright takedown claims, platform statistics
+- [ ] Planned extras: Wrapped (yearly stats), Listening Rooms, offline mode, lyrics
 
 ### Known limitations
 - BPM, waveform and loudness come from the browser at upload time; files uploaded via the raw API without `analysis` have no waveform/BPM (no server-side decoder without ffmpeg)

@@ -1,6 +1,6 @@
 import {
   Home, Compass, Search, Library, Heart, History, Upload, FolderOpen, SlidersHorizontal, Disc3,
-  Settings, Info, Bell, BarChart3, ShieldCheck, Gavel, Palette,
+  Settings, Info, Bell, BarChart3, ShieldCheck, Gavel, Palette, Paintbrush,
   type LucideIcon,
 } from "lucide-react";
 import type { MessageKey } from "@/i18n/translate";
@@ -56,6 +56,7 @@ export const NAV: NavGroup[] = [
 export const SECONDARY_NAV: NavItem[] = [
   { href: "/notifications", label: "nav.notifications", icon: Bell, auth: true },
   { href: "/settings/appearance", label: "nav.appearance", icon: Palette },
+  { href: "/themes", label: "nav.themes", icon: Paintbrush },
   { href: "/settings", label: "nav.settings", icon: Settings, auth: true },
   { href: "/about", label: "nav.about", icon: Info },
 ];
