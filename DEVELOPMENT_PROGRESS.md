@@ -27,14 +27,26 @@ _Last updated: 2026-11-05_
 - [~] Built but only smoke-tested (route loads without error): Album, Library, Favorites, Notifications pages; drag-and-drop playlist reorder, collaborators dialog and profile editing UI not yet clicked through
 - [~] Browser-side upload UI (drag & drop + client waveform/loudness/BPM analysis) not yet clicked through; the API it calls is verified
 
+- [x] Phase 4 (verified 2026-11-06):
+  - **Equalizer page:** 10-band EQ, built-in presets plus custom presets saved to the account (`/me/eq-presets`, API returned 201), preamp, bass boost, treble, balance, live spectrum analyzer, and playback settings (crossfade 0–12 s, normalization, gapless, quality, speed). Measured in the browser: Treble Booster raised high-band analyser energy about 68% over Flat.
+  - **Mixing Studio** (`src/audio/studio`): two decks streaming through `<audio>` elements, with key lock via the browser's native time-stretch.
+    - Per deck: gain, 3-band EQ with kill, low/high-pass filter sweep, beat-synced echo, pitch shift independent of tempo, tempo ±16%, nudge, CDJ-style cue, 4 hot cues, beat loops (1–16).
+    - Mixer: equal-power crossfader, master level and meter, mix recording via MediaRecorder, saved sessions (`/mixes`).
+  - **Studio checks in the browser:** BPM detected as 127.9 and 119.8 (true values 128 and 120); Sync matched deck B to 127.9; a 4-beat loop held its position; recording produced a WebM file; a saved session restored both tracks, the synced tempo and the crossfader.
+  - **Pitch shifter**, tested offline on a 440 Hz sine: +12 / −12 / +7 semitones gave 882 / 221 / 658 Hz (expected 880 / 220 / 659), with constant loudness.
+  - **Export policy:** you can download a recorded mix only when every track used is your own upload, public domain or Creative Commons. This check runs in the browser and is documented as such.
+
 ### Not built yet: these sidebar links currently lead to 404 pages
-- [ ] Pages: Equalizer, Mixing Studio, Settings (account/privacy/appearance), Artist dashboard, Admin, Moderation, Community themes
-- [ ] APIs: admin/moderation endpoints (reports are collected but there's no review UI yet), copyright takedown claims, themes gallery, mixes
+- [ ] Pages: Settings (account/privacy/appearance), Artist dashboard, Admin, Moderation, Community themes
+- [ ] APIs: admin/moderation endpoints (reports are collected but there's no review UI yet), copyright takedown claims, themes gallery
 
 ### Known limitations
 - BPM, waveform and loudness come from the browser at upload time; files uploaded via the raw API without `analysis` have no waveform/BPM (no server-side decoder without ffmpeg)
 - Search uses case-insensitive substring matching; swap in Postgres full-text or Meilisearch for large instances (`src/server/modules/search/service.ts`)
 - Rate limiting and the job queue are in-process (single-instance deployment)
+- Audio quality selection: only the original upload is stored. There is no server-side transcoding (that needs ffmpeg), so "High" falls back to the original file.
+- Studio beat sync matches tempo only. Phase alignment is manual (nudge), because no downbeat detection is implemented.
+- The studio decodes each loaded track in full to draw the waveform and detect BPM, so very long files use a lot of memory.
 - [ ] Phase 4: Equalizer page (engine support exists), Mixing Studio
 - [ ] Phase 5: theme editor UI (the theme engine exists), community themes, comments
 - [ ] Phase 6: artist dashboard, moderation/admin dashboards, notifications UI

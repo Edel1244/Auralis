@@ -39,7 +39,7 @@ export const NAV: NavGroup[] = [
     items: [
       { href: "/upload", label: "nav.upload", icon: Upload, auth: true },
       { href: "/uploads", label: "nav.uploads", icon: FolderOpen, auth: true },
-      { href: "/studio", label: "nav.studio", icon: Disc3 },
+      { href: "/studio", label: "nav.studio", icon: Disc3, auth: true },
       { href: "/equalizer", label: "nav.equalizer", icon: SlidersHorizontal },
     ],
   },
