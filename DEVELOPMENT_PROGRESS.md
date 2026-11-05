@@ -10,14 +10,15 @@ Legend: ✅ implemented and verified · ☑️ implemented, verified indirectly 
 |---|---|
 | TypeScript (`tsc --noEmit`) | 0 errors |
 | ESLint | 0 errors, 0 warnings |
-| Unit tests (Vitest) | 38/38: queue, audio file-type detection, HTTP ranges, DSP/BPM, recommendations, studio math, theme validation, moderation rules |
+| Unit tests (Vitest) | 45/45: queue, audio file-type detection, HTTP ranges, DSP/BPM, recommendations, studio math, theme validation, moderation rules, Docker/Compose config checks |
 | End-to-end RBAC/moderation script | 37/37 (role denials, takedowns, strikes → auto-suspension, ban/unban, audit log) |
 | Production build (`next build`, standalone) | Clean, no warnings. Tested: pages, login cookie flags, Range streaming, CSRF block, image processing, CSP with no violations, health endpoint |
 | Browser testing | Every page renders; upload → processing → playback, navigation without interruption, EQ effect measured, studio flows, themes, settings, dashboards; no horizontal overflow at 375 px on 12 key pages |
 | Dependency audit | `npm audit --omit=dev`: 0 vulnerabilities; 478 packages, all AGPL-compatible licenses |
 | API smoke test (`scripts/smoke.mjs`) | 25/25 against the dev instance, and 25/25 against a production build on a **fresh** database configured only through environment variables (simulating the CI integration job) |
-| CI (`.github/workflows/ci.yml`) | 🟡 Written; YAML validated; the `checks` and `integration` steps were reproduced locally. It has **not run on GitHub yet**: the repository has no remote |
-| Docker | 🟡 `Dockerfile`, `docker-compose.yml` and entrypoint are written. The standalone runtime and the migration tooling they use were validated locally, but **the images were not built**, because Docker isn't installed on the development machine. The CI `docker` job builds and smoke-tests them on the first push |
+| CI (`.github/workflows/ci.yml`) | ✅ All three jobs pass on GitHub Actions (`Edel1244/Auralis`): checks, integration (PostgreSQL 17 + production build + smoke test), Docker |
+| Docker | ✅ Image builds in CI; the Compose stack (PostgreSQL + app) starts, migrations apply, health checks pass, the smoke test passes against the container, and the image contains no secrets or local data. First-run fixes: route types generated before `tsc`, `prisma validate` given a placeholder URL at build time, and no required variables in the optional MinIO profile |
+| Docker with S3 (`--profile s3`, MinIO) | 🟡 Not exercised in CI; the local storage driver is what's tested |
 
 ## Requirements checklist
 
@@ -101,7 +102,7 @@ Legend: ✅ implemented and verified · ☑️ implemented, verified indirectly 
 - Dev database (PGlite): a single shared session, so `pgbouncer=true` is required and there are 20 connections max (`npm run db:start`). Production uses regular PostgreSQL.
 
 ## Planned next
-1. Push to GitHub so the CI workflow runs (this is the first real Docker build) and fix anything it reports
+1. Add a CI job for the S3 storage driver (Compose `--profile s3` with MinIO)
 2. Wrapped (yearly stats) and smart/genre playlists
 3. Optional ffmpeg worker for transcoding and server-side waveforms
 4. Listening Rooms (WebSocket sync)
