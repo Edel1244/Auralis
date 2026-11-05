@@ -1,0 +1,163 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: "24"
+  NEXT_TELEMETRY_DISABLED: "1"
+
+jobs:
+  checks:
+    name: Typecheck, lint, unit tests, licenses
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Unit tests
+        run: npm test
+
+      - name: Dependency licenses (AGPL-compatible allow-list)
+        run: node scripts/licenses.mjs --check
+
+      - name: Security audit (production dependencies)
+        run: npm audit --omit=dev --audit-level=high
+
+  integration:
+    name: Production build + API smoke test (PostgreSQL)
+    runs-on: ubuntu-latest
+    needs: checks
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: auralis
+          POSTGRES_PASSWORD: auralis-ci
+          POSTGRES_DB: auralis
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U auralis -d auralis"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      DATABASE_URL: postgresql://auralis:auralis-ci@localhost:5432/auralis
+      APP_URL: http://127.0.0.1:3000
+      STORAGE_DRIVER: local
+      STORAGE_LOCAL_DIR: ${{ github.workspace }}/.data/storage
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate a throwaway AUTH_SECRET
+        run: echo "AUTH_SECRET=$(node -e "console.log(require('crypto').randomBytes(48).toString('base64url'))")" >> "$GITHUB_ENV"
+
+      - name: Apply migrations
+        run: npx prisma migrate deploy
+
+      - name: Production build
+        run: npm run build
+
+      - name: Assemble standalone server
+        run: |
+          cp -r .next/static .next/standalone/.next/static
+          cp -r public .next/standalone/public
+          # The build output must never contain local data or secrets.
+          test ! -e .next/standalone/.data
+          test ! -e .next/standalone/tests
+
+      - name: Start server
+        run: |
+          mkdir -p "$STORAGE_LOCAL_DIR"
+          NODE_ENV=production PORT=3000 HOSTNAME=127.0.0.1 nohup node .next/standalone/server.js > server.log 2>&1 &
+
+      - name: Smoke test
+        run: node scripts/smoke.mjs http://127.0.0.1:3000
+
+      - name: Server log
+        if: always()
+        run: cat server.log || true
+
+  docker:
+    name: Docker image + Compose stack smoke test
+    runs-on: ubuntu-latest
+    needs: checks
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Create .env for Compose
+        run: |
+          cp .env.example .env
+          gen() { node -e "console.log(require('crypto').randomBytes(32).toString('base64url'))"; }
+          sed -i "s|^POSTGRES_PASSWORD=.*|POSTGRES_PASSWORD=$(gen)|" .env
+          sed -i "s|^AUTH_SECRET=.*|AUTH_SECRET=$(gen)$(gen)|" .env
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Build image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: false
+          load: true
+          tags: auralis:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Start stack (waits for health checks)
+        run: docker compose up -d --no-build --wait --wait-timeout 180
+
+      - name: Smoke test against the container
+        run: node scripts/smoke.mjs http://127.0.0.1:3000
+
+      - name: Image hygiene
+        run: |
+          # No secrets or local data may be baked into the image.
+          docker run --rm --entrypoint sh auralis:latest -c 'test ! -e /app/.env && test -z "$(ls -A /app/.data)" && echo "image clean"'
+
+      - name: Container logs
+        if: always()
+        run: docker compose logs --no-color app db || true
+
+      - name: Tear down
+        if: always()
+        run: docker compose down -v

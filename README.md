@@ -87,6 +87,15 @@ Without SMTP configured, verification and password-reset emails are written to `
 | `npm run user:role -- <username> <USER\|MODERATOR\|ADMIN>` | Change a user's role from the CLI |
 | `node scripts/licenses.mjs` | Regenerate [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md) |
 | `./scripts/backup.sh` | Back up the Compose database and media volume |
+| `node scripts/smoke.mjs [url]` | End-to-end smoke test against a running instance (self-cleaning) |
+
+### Continuous integration
+
+`.github/workflows/ci.yml` runs on every push to `main` and on every pull request:
+
+1. **checks:** typecheck, lint, unit tests, dependency license allow-list, `npm audit` (high and above).
+2. **integration:** applies migrations to a PostgreSQL 17 service, runs the production build, checks that the build contains no local data, starts the standalone server and runs the smoke test.
+3. **docker:** builds the image, starts the full Compose stack (waiting for health checks), runs the smoke test against the container, and checks that no secrets or data were baked into the image.
 
 ## Configuration
 
