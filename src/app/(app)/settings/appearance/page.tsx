@@ -311,8 +311,8 @@ export default function AppearancePage() {
             onClick={async () => {
               setSaving(true);
               try {
-                const { sidebar: _sidebar, ...tokens } = theme;
-                await api("/themes", { body: { ...form, tokens: { ...tokens, sidebar: "expanded" } } });
+                // The sidebar layout is a personal preference, not part of a shared theme.
+                await api("/themes", { body: { ...form, tokens: { ...theme, sidebar: "expanded" } } });
                 toast(form.isPublic ? t("appearance.published") : t("appearance.savedTheme"), "success");
                 setSaveOpen(false);
                 setForm({ name: "", description: "", isPublic: false });

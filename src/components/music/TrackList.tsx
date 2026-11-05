@@ -105,8 +105,14 @@ export function TrackList({
             onKeyDown={(e) => {
               if (e.target !== e.currentTarget) return;
               if (e.key === "Enter" && !unavailable) playAt(i);
-              if (onReorder && e.altKey && e.key === "ArrowUp" && i > 0) (e.preventDefault(), onReorder(i, i - 1));
-              if (onReorder && e.altKey && e.key === "ArrowDown" && i < tracks.length - 1) (e.preventDefault(), onReorder(i, i + 1));
+              if (onReorder && e.altKey && e.key === "ArrowUp" && i > 0) {
+                e.preventDefault();
+                onReorder(i, i - 1);
+              }
+              if (onReorder && e.altKey && e.key === "ArrowDown" && i < tracks.length - 1) {
+                e.preventDefault();
+                onReorder(i, i + 1);
+              }
             }}
             className={cn(
               "group grid grid-cols-[32px_minmax(0,1fr)_72px] items-center gap-3 rounded-xl px-3 py-[calc(0.45rem*var(--density))] transition-colors hover:bg-surface-2/70 focus-visible:bg-surface-2 md:grid-cols-[32px_minmax(0,1fr)_minmax(0,0.7fr)_96px_72px] md:gap-4",

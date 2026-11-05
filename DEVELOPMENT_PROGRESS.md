@@ -50,9 +50,25 @@ _Last updated: 2026-11-05_
     - Switching dark/light kept a preset's custom background, so text became unreadable; mode changes now reset background/surface
     - Cramped preset cards
 
-### Not built yet: these sidebar links currently lead to 404 pages
-- [ ] Pages: Artist dashboard, Admin, Moderation
-- [ ] APIs: admin/moderation endpoints (reports are collected but there's no review UI yet), copyright takedown claims, platform statistics
+- [x] Phase 6 (verified 2026-11-06):
+  - **Artist dashboard** (`/artist`): totals; 30-day plays, listeners, new followers and completion rate; daily plays and minutes charts; top tracks. Only aggregates are shown and the artist's own listens are excluded. Confirmed with a second account's listen.
+  - **Moderation** (`/moderation`, moderator+):
+    - Report queue: status filters, preview of the reported item, report count per item, take/dismiss/remove with a note and optional copyright strike
+    - Copyright claims: uphold (takedown + strike) or reject
+    - Upload review: remove/restore
+    - Read-only audit log
+  - **Copyright takedown form** (`/copyright`): no account needed; good-faith statement required; rate limited; linked from track pages and About
+  - **Repeat-infringer policy:** 3 upheld strikes automatically suspend a regular user for 30 days, with a notification
+  - **Admin** (`/admin`, admin only):
+    - Overview: users, tracks, plays, storage, open reports/claims, job queue, 14-day upload/play/sign-up charts, largest storage users
+    - User management: search/filter; suspend/unsuspend (moderators too); ban/unban, role, quota, clear strikes (admins only)
+    - Genre management: create, recolor, (de)activate
+    - Audit log
+  - **Role checks happen on the server.** Moderators can't act on themselves or on equal/higher rank, and can't remove admins' content. The last active admin can't be demoted. Banning revokes all sessions.
+  - **End-to-end script, 37/37 passed:** role denials, report → removal → restore, anonymous claim and rejection, 3 strikes → auto-suspension (writes blocked, reads allowed), notifications, ban (session revoked, login blocked, profile hidden), unban, audit entries, stats. Quota is released when tracks are deleted.
+
+### Not built yet
+- [ ] Phase 7: full audit, production build check, Docker/Compose, README, LICENSE, CONTRIBUTING, CODE_OF_CONDUCT, SECURITY, API docs
 - [ ] Planned extras: Wrapped (yearly stats), Listening Rooms, offline mode, lyrics
 
 ### Known limitations

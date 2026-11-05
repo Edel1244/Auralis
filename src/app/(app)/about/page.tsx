@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { LogoMark, Wordmark } from "@/components/brand/Logo";
 import { useT } from "@/i18n/I18nProvider";
 import { LanguageSelect } from "@/components/settings/LanguageSelect";
@@ -20,6 +21,9 @@ export default function AboutPage() {
         <p className="text-muted">{t("about.body")}</p>
         <p className="text-muted">{t("about.license")}</p>
         <p className="text-sm text-subtle">{t("about.copyright")}</p>
+        <Link href="/copyright" className="inline-block text-sm font-semibold text-primary hover:underline">
+          {t("copyright.fileClaim")} →
+        </Link>
       </section>
       <section className="rounded-2xl border border-line bg-surface p-5">
         <h2 className="mb-1 font-semibold">{t("settings.language")}</h2>

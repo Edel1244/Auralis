@@ -138,6 +138,11 @@ export default function TrackPage({ params }: PageProps<"/track/[id]">) {
             </div>
           ))}
           {tr.licenseNote && <p className="pt-2 text-xs text-muted">{tr.licenseNote}</p>}
+          {user?.id !== tr.owner.id && (
+            <Link href={`/copyright?track=${tr.id}`} className="block pt-3 text-xs font-semibold text-muted hover:text-fg hover:underline">
+              {t("copyright.fileClaim")} →
+            </Link>
+          )}
         </aside>
       </div>
       <ReportDialog open={report} onClose={() => setReport(false)} targetType="TRACK" targetId={tr.id} />

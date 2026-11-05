@@ -36,8 +36,8 @@ export default function RegisterPage() {
             f.setErrors({ confirm: t("auth.passwordMismatch") });
             return;
           }
-          void f.submit(async ({ confirm: _confirm, ...v }) => {
-            const r = await api<{ user: Me }>("/auth/register", { body: v });
+          void f.submit(async ({ email, username, displayName, password, acceptTerms }) => {
+            const r = await api<{ user: Me }>("/auth/register", { body: { email, username, displayName, password, acceptTerms } });
             setUser(r.user);
             await refresh();
             router.replace("/home");
