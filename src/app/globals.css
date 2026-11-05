@@ -1,0 +1,158 @@
+@import "tailwindcss";
+
+/* ───────────── AURALIS design tokens ─────────────
+   Every color in the UI comes from these variables, so the theme engine
+   (src/theme) can restyle the app at runtime by overriding them on <html>. */
+:root {
+  --au-primary: #008cff;
+  --au-primary-hover: #33a3ff;
+  --au-primary-contrast: #ffffff;
+  --au-accent: #3df2ff;
+  --au-bg: #080b10;
+  --au-surface: #111720;
+  --au-surface-2: #18202c;
+  --au-elevated: #1e2836;
+  --au-border: #222c3a;
+  --au-text: #ffffff;
+  --au-text-muted: #9aa6b8;
+  --au-text-subtle: #66738a;
+  --au-danger: #ff4d6a;
+  --au-success: #2fd18a;
+  --au-warning: #ffb547;
+  --gradient-hero: radial-gradient(1200px 500px at 15% -10%, color-mix(in oklab, var(--au-primary) 35%, transparent), transparent 60%),
+    radial-gradient(900px 400px at 95% 0%, color-mix(in oklab, var(--au-accent) 16%, transparent), transparent 60%);
+  --radius-card: 14px;
+  --font-body: var(--font-inter);
+  --font-heading: var(--font-sora);
+  --sidebar-width: 264px;
+  --player-height: 84px;
+  --density: 1;
+  color-scheme: dark;
+}
+
+:root[data-theme="light"] {
+  --au-bg: #f4f7fb;
+  --au-surface: #ffffff;
+  --au-surface-2: #eef2f8;
+  --au-elevated: #ffffff;
+  --au-border: #dbe2ec;
+  --au-text: #0b1220;
+  --au-text-muted: #4c5a70;
+  --au-text-subtle: #7d8aa0;
+  --au-accent: #00b8d4;
+  color-scheme: light;
+}
+
+:root[data-density="compact"] { --density: 0.82; --player-height: 72px; }
+:root[data-density="spacious"] { --density: 1.18; --player-height: 92px; }
+
+@theme inline {
+  --color-primary: var(--au-primary);
+  --color-primary-hover: var(--au-primary-hover);
+  --color-accent: var(--au-accent);
+  --color-bg: var(--au-bg);
+  --color-surface: var(--au-surface);
+  --color-surface-2: var(--au-surface-2);
+  --color-elevated: var(--au-elevated);
+  --color-line: var(--au-border);
+  --color-fg: var(--au-text);
+  --color-muted: var(--au-text-muted);
+  --color-subtle: var(--au-text-subtle);
+  --color-danger: var(--au-danger);
+  --color-success: var(--au-success);
+  --color-warning: var(--au-warning);
+  --font-sans: var(--font-body), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-heading), var(--font-body), ui-sans-serif, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+html, body { height: 100%; }
+
+body {
+  background: var(--au-bg);
+  color: var(--au-text);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+::selection { background: color-mix(in oklab, var(--au-primary) 45%, transparent); }
+
+:focus-visible {
+  outline: 2px solid var(--au-accent);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+/* Thin, themed scrollbars */
+* { scrollbar-width: thin; scrollbar-color: var(--au-border) transparent; }
+
+/* Range inputs (seek / volume / EQ) */
+input[type="range"].au-range {
+  -webkit-appearance: none;
+  appearance: none;
+  background: transparent;
+  height: 16px;
+  cursor: pointer;
+  --pct: 0%;
+}
+input[type="range"].au-range::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: 999px;
+  background: linear-gradient(to right, var(--au-primary) var(--pct), var(--au-border) var(--pct));
+}
+input[type="range"].au-range::-moz-range-track {
+  height: 4px; border-radius: 999px; background: var(--au-border);
+}
+input[type="range"].au-range::-moz-range-progress {
+  height: 4px; border-radius: 999px; background: var(--au-primary);
+}
+input[type="range"].au-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 12px; height: 12px; margin-top: -4px;
+  border-radius: 50%; background: #fff; border: 0;
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--au-primary) 40%, transparent);
+  opacity: 0; transition: opacity .15s;
+}
+input[type="range"].au-range:hover::-webkit-slider-thumb,
+input[type="range"].au-range:focus-visible::-webkit-slider-thumb { opacity: 1; }
+input[type="range"].au-range::-moz-range-thumb {
+  width: 12px; height: 12px; border-radius: 50%; background: #fff; border: 0;
+}
+
+/* Player surface styles (Appearance → player style) */
+.player-surface { background: color-mix(in oklab, var(--au-surface) 78%, transparent); backdrop-filter: blur(24px) saturate(1.4); }
+:root[data-player="solid"] .player-surface { background: var(--au-surface); backdrop-filter: none; }
+:root[data-player="minimal"] .player-surface { background: var(--au-bg); backdrop-filter: none; }
+
+/* Brand mark animation (splash/loading) */
+@keyframes au-ring-spin { to { transform: rotate(360deg); } }
+@keyframes au-wave { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-1.2px); } }
+@keyframes au-dot { 0%,100% { opacity: 1; } 50% { opacity: .35; } }
+.auralis-mark-animated .mark-ring { transform-origin: 32px 32px; animation: au-ring-spin 2.4s linear infinite; }
+.auralis-mark-animated .mark-wave { animation: au-wave 1.2s ease-in-out infinite; }
+.auralis-mark-animated .mark-dot { animation: au-dot 1.2s ease-in-out infinite; }
+
+@keyframes au-eq { 0%,100% { transform: scaleY(.3); } 50% { transform: scaleY(1); } }
+.au-eq-bar { transform-origin: bottom; animation: au-eq .9s ease-in-out infinite; }
+
+@keyframes au-shimmer { 100% { transform: translateX(100%); } }
+.au-skeleton { position: relative; overflow: hidden; background: var(--au-surface-2); }
+.au-skeleton::after {
+  content: ""; position: absolute; inset: 0; transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, color-mix(in oklab, var(--au-text) 6%, transparent), transparent);
+  animation: au-shimmer 1.4s infinite;
+}
+
+/* Reduced motion: honor both the OS setting and the in-app preference */
+:root[data-motion="reduced"] *, :root[data-motion="reduced"] *::before, :root[data-motion="reduced"] *::after {
+  animation-duration: 0.001ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.001ms !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  :root:not([data-motion="full"]) *, :root:not([data-motion="full"]) *::before, :root:not([data-motion="full"]) *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}

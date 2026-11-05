@@ -1,0 +1,554 @@
+// AURALIS database schema
+// PostgreSQL is the system of record. Audio and images live in object storage;
+// only their storage keys are stored here.
+
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "debian-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ───────────────────────────── Enums ─────────────────────────────
+
+enum Role {
+  USER
+  MODERATOR
+  ADMIN
+}
+
+enum AccountStatus {
+  ACTIVE
+  SUSPENDED
+  BANNED
+}
+
+enum TokenType {
+  EMAIL_VERIFY
+  PASSWORD_RESET
+}
+
+enum Visibility {
+  PUBLIC
+  UNLISTED
+  PRIVATE
+}
+
+enum TrackStatus {
+  PROCESSING
+  READY
+  FAILED
+  REMOVED
+}
+
+enum Ownership {
+  ORIGINAL
+  LICENSED
+  PUBLIC_DOMAIN
+  CREATIVE_COMMONS
+}
+
+enum PlaylistKind {
+  MANUAL
+  SMART
+}
+
+enum CollaboratorRole {
+  EDITOR
+  VIEWER
+}
+
+enum ReportTarget {
+  TRACK
+  ALBUM
+  PLAYLIST
+  USER
+  COMMENT
+  THEME
+}
+
+enum ReportReason {
+  COPYRIGHT
+  SPAM
+  ABUSE
+  EXPLICIT_UNLABELED
+  IMPERSONATION
+  OTHER
+}
+
+enum ReportStatus {
+  OPEN
+  REVIEWING
+  RESOLVED
+  DISMISSED
+}
+
+// ───────────────────────────── Accounts ─────────────────────────────
+
+model User {
+  id                String        @id @default(cuid())
+  email             String        @unique
+  username          String        @unique
+  displayName       String
+  passwordHash      String
+  role              Role          @default(USER)
+  status            AccountStatus @default(ACTIVE)
+  suspendedUntil    DateTime?
+  emailVerifiedAt   DateTime?
+  bio               String        @default("")
+  avatarKey         String?
+  bannerKey         String?
+  isPrivate         Boolean       @default(false)
+  isArtist          Boolean       @default(false)
+  locale            String        @default("en")
+  privacy           Json          @default("{}")
+  storageUsedBytes  BigInt        @default(0)
+  storageQuotaBytes BigInt        @default(2147483648) // 2 GiB
+  strikeCount       Int           @default(0)
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+
+  sessions        Session[]
+  tokens          VerificationToken[]
+  preference      UserPreference?
+  tracks          Track[]
+  albums          Album[]
+  playlists       Playlist[]
+  collaborations  PlaylistCollaborator[]
+  playlistAdds    PlaylistTrack[]         @relation("PlaylistTrackAddedBy")
+  trackLikes      TrackLike[]
+  playlistFollows PlaylistFollow[]
+  albumLikes      AlbumLike[]
+  plays           PlayEvent[]
+  searches        SearchQuery[]
+  comments        Comment[]
+  following       Follow[]                @relation("Following")
+  followers       Follow[]                @relation("Followers")
+  reports         Report[]                @relation("ReportAuthor")
+  handledReports  Report[]                @relation("ReportHandler")
+  modActions      ModerationAction[]
+  notifications   Notification[]
+  themes          Theme[]
+  themeInstalls   ThemeInstall[]
+  mixes           Mix[]
+  eqPresets       EqPreset[]
+  copyrightClaims CopyrightClaim[]        @relation("ClaimReviewer")
+
+  @@index([createdAt])
+  @@index([role])
+}
+
+model Session {
+  id         String   @id @default(cuid())
+  tokenHash  String   @unique
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userAgent  String?
+  ip         String?
+  createdAt  DateTime @default(now())
+  lastUsedAt DateTime @default(now())
+  expiresAt  DateTime
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model VerificationToken {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      TokenType
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId, type])
+}
+
+model UserPreference {
+  userId        String   @id
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  appearance    Json     @default("{}") // theme tokens, density, motion, typography
+  playback      Json     @default("{}") // crossfade, normalization, speed, quality
+  equalizer     Json     @default("{}") // active 10-band gains, balance, bass/treble
+  activeThemeId String?
+  updatedAt     DateTime @updatedAt
+}
+
+model Follow {
+  followerId  String
+  followingId String
+  createdAt   DateTime @default(now())
+  follower    User     @relation("Following", fields: [followerId], references: [id], onDelete: Cascade)
+  following   User     @relation("Followers", fields: [followingId], references: [id], onDelete: Cascade)
+
+  @@id([followerId, followingId])
+  @@index([followingId])
+}
+
+// ───────────────────────────── Catalog ─────────────────────────────
+
+model Genre {
+  id     String  @id @default(cuid())
+  slug   String  @unique
+  name   String
+  color  String  @default("#008CFF")
+  active Boolean @default(true)
+  tracks Track[]
+  albums Album[]
+}
+
+model Album {
+  id          String     @id @default(cuid())
+  ownerId     String
+  owner       User       @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  title       String
+  artistName  String
+  description String     @default("")
+  coverKey    String?
+  genreId     String?
+  genre       Genre?     @relation(fields: [genreId], references: [id], onDelete: SetNull)
+  releaseDate DateTime?
+  visibility  Visibility @default(PUBLIC)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  tracks      Track[]
+  likes       AlbumLike[]
+
+  @@index([ownerId])
+  @@index([artistName])
+  @@index([createdAt])
+}
+
+model Track {
+  id              String      @id @default(cuid())
+  ownerId         String
+  owner           User        @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  albumId         String?
+  album           Album?      @relation(fields: [albumId], references: [id], onDelete: SetNull)
+  trackNumber     Int?
+  title           String
+  artistName      String
+  description     String      @default("")
+  genreId         String?
+  genre           Genre?      @relation(fields: [genreId], references: [id], onDelete: SetNull)
+  tags            String[]    @default([])
+  mood            String?
+  releaseDate     DateTime?
+  visibility      Visibility  @default(PUBLIC)
+  status          TrackStatus @default(PROCESSING)
+  statusReason    String?
+  explicit        Boolean     @default(false)
+  commentsEnabled Boolean     @default(true)
+
+  // Rights
+  ownership       Ownership   @default(ORIGINAL)
+  licenseNote     String      @default("")
+  rightsConfirmedAt DateTime  @default(now())
+
+  // Audio
+  audioKey        String
+  originalName    String
+  mimeType        String
+  sizeBytes       BigInt
+  sha256          String
+  durationMs      Int         @default(0)
+  bitrate         Int?
+  sampleRate      Int?
+  channels        Int?
+  codec           String?
+  lossless        Boolean     @default(false)
+  waveform        Json?       // number[] peaks 0..1
+  bpm             Float?
+  loudnessDb      Float?      // integrated loudness estimate for normalization
+  coverKey        String?
+
+  playCount       Int         @default(0)
+  likeCount       Int         @default(0)
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  assets          TrackAsset[]
+  likes           TrackLike[]
+  playlistEntries PlaylistTrack[]
+  plays           PlayEvent[]
+  comments        Comment[]
+  claims          CopyrightClaim[]
+
+  @@index([ownerId])
+  @@index([albumId])
+  @@index([genreId])
+  @@index([sha256])
+  @@index([visibility, status, createdAt])
+  @@index([playCount])
+  @@index([title])
+  @@index([artistName])
+}
+
+/// Alternate encodings of a track (quality selection).
+model TrackAsset {
+  id        String   @id @default(cuid())
+  trackId   String
+  track     Track    @relation(fields: [trackId], references: [id], onDelete: Cascade)
+  quality   String   // "original" | "high" | "low"
+  key       String
+  mimeType  String
+  bitrate   Int?
+  sizeBytes BigInt
+  createdAt DateTime @default(now())
+
+  @@unique([trackId, quality])
+}
+
+model TrackLike {
+  userId    String
+  trackId   String
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  track     Track    @relation(fields: [trackId], references: [id], onDelete: Cascade)
+
+  @@id([userId, trackId])
+  @@index([trackId])
+  @@index([userId, createdAt])
+}
+
+model AlbumLike {
+  userId    String
+  albumId   String
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  album     Album    @relation(fields: [albumId], references: [id], onDelete: Cascade)
+
+  @@id([userId, albumId])
+}
+
+model Comment {
+  id        String    @id @default(cuid())
+  trackId   String
+  userId    String
+  body      String
+  createdAt DateTime  @default(now())
+  deletedAt DateTime?
+  track     Track     @relation(fields: [trackId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([trackId, createdAt])
+}
+
+// ───────────────────────────── Playlists ─────────────────────────────
+
+model Playlist {
+  id              String       @id @default(cuid())
+  ownerId         String
+  owner           User         @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  title           String
+  description     String       @default("")
+  coverKey        String?
+  background      String?      // css color or gradient token
+  visibility      Visibility   @default(PRIVATE)
+  isCollaborative Boolean      @default(false)
+  kind            PlaylistKind @default(MANUAL)
+  smartRules      Json?
+  folder          String?
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  tracks        PlaylistTrack[]
+  collaborators PlaylistCollaborator[]
+  followers     PlaylistFollow[]
+
+  @@index([ownerId])
+  @@index([visibility, updatedAt])
+}
+
+model PlaylistTrack {
+  id         String   @id @default(cuid())
+  playlistId String
+  trackId    String
+  position   Int
+  addedById  String?
+  addedAt    DateTime @default(now())
+  playlist   Playlist @relation(fields: [playlistId], references: [id], onDelete: Cascade)
+  track      Track    @relation(fields: [trackId], references: [id], onDelete: Cascade)
+  addedBy    User?    @relation("PlaylistTrackAddedBy", fields: [addedById], references: [id], onDelete: SetNull)
+
+  @@index([playlistId, position])
+  @@index([trackId])
+}
+
+model PlaylistCollaborator {
+  playlistId String
+  userId     String
+  role       CollaboratorRole @default(EDITOR)
+  createdAt  DateTime         @default(now())
+  playlist   Playlist         @relation(fields: [playlistId], references: [id], onDelete: Cascade)
+  user       User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([playlistId, userId])
+  @@index([userId])
+}
+
+model PlaylistFollow {
+  userId     String
+  playlistId String
+  createdAt  DateTime @default(now())
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  playlist   Playlist @relation(fields: [playlistId], references: [id], onDelete: Cascade)
+
+  @@id([userId, playlistId])
+  @@index([playlistId])
+}
+
+// ───────────────────────────── Listening ─────────────────────────────
+
+model PlayEvent {
+  id        String   @id @default(cuid())
+  userId    String
+  trackId   String
+  playedAt  DateTime @default(now())
+  msPlayed  Int      @default(0)
+  completed Boolean  @default(false)
+  source    String?  // "playlist:<id>", "album:<id>", "search", ...
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  track     Track    @relation(fields: [trackId], references: [id], onDelete: Cascade)
+
+  @@index([userId, playedAt])
+  @@index([trackId, playedAt])
+  @@index([playedAt])
+}
+
+model SearchQuery {
+  id        String   @id @default(cuid())
+  userId    String?
+  query     String
+  createdAt DateTime @default(now())
+  user      User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([createdAt])
+}
+
+// ───────────────────────────── Moderation ─────────────────────────────
+
+model Report {
+  id          String       @id @default(cuid())
+  reporterId  String?
+  reporter    User?        @relation("ReportAuthor", fields: [reporterId], references: [id], onDelete: SetNull)
+  targetType  ReportTarget
+  targetId    String
+  reason      ReportReason
+  details     String       @default("")
+  status      ReportStatus @default(OPEN)
+  handledById String?
+  handledBy   User?        @relation("ReportHandler", fields: [handledById], references: [id], onDelete: SetNull)
+  resolution  String?
+  createdAt   DateTime     @default(now())
+  resolvedAt  DateTime?
+
+  @@index([status, createdAt])
+  @@index([targetType, targetId])
+}
+
+/// Formal copyright takedown notice (can be filed without an account).
+model CopyrightClaim {
+  id              String       @id @default(cuid())
+  trackId         String
+  track           Track        @relation(fields: [trackId], references: [id], onDelete: Cascade)
+  claimantName    String
+  claimantEmail   String
+  workDescription String
+  evidenceUrl     String?
+  goodFaith       Boolean
+  status          ReportStatus @default(OPEN)
+  reviewerId      String?
+  reviewer        User?        @relation("ClaimReviewer", fields: [reviewerId], references: [id], onDelete: SetNull)
+  resolution      String?
+  createdAt       DateTime     @default(now())
+  resolvedAt      DateTime?
+
+  @@index([status, createdAt])
+  @@index([trackId])
+}
+
+/// Immutable audit trail of every privileged action.
+model ModerationAction {
+  id         String   @id @default(cuid())
+  actorId    String
+  actor      User     @relation(fields: [actorId], references: [id], onDelete: Cascade)
+  action     String
+  targetType String
+  targetId   String
+  reason     String   @default("")
+  metadata   Json     @default("{}")
+  createdAt  DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([targetType, targetId])
+}
+
+model Notification {
+  id        String    @id @default(cuid())
+  userId    String
+  type      String
+  data      Json      @default("{}")
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+}
+
+// ───────────────────────────── Customization & Studio ─────────────────────────────
+
+model Theme {
+  id          String         @id @default(cuid())
+  authorId    String
+  author      User           @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  name        String
+  description String         @default("")
+  tokens      Json
+  isPublic    Boolean        @default(false)
+  installs    Int            @default(0)
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  installsBy  ThemeInstall[]
+
+  @@index([isPublic, installs])
+}
+
+model ThemeInstall {
+  userId    String
+  themeId   String
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  theme     Theme    @relation(fields: [themeId], references: [id], onDelete: Cascade)
+
+  @@id([userId, themeId])
+}
+
+model EqPreset {
+  id        String   @id @default(cuid())
+  userId    String
+  name      String
+  gains     Float[]
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, name])
+}
+
+model Mix {
+  id        String   @id @default(cuid())
+  ownerId   String
+  owner     User     @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  title     String
+  data      Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([ownerId])
+}
