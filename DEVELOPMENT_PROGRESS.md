@@ -18,14 +18,23 @@ _Last updated: 2026-11-05_
 - [x] Phase 2: register, login, logout, email verification, password reset, sessions, profile/avatar/banner/privacy/preferences/account APIs, follow API, rate limiting, mail outbox. In the browser, registration (first user becomes admin) and email verification were tested end to end.
 - [x] Unit tests (26, all passing): queue logic, audio file-type detection, HTTP Range parsing, recommendation scoring, BPM/peaks/RMS analysis
 
-### Implemented, not yet browser-tested
-- [~] Phase 3 server: streaming upload, magic-byte validation, duplicate detection, quota checks, background metadata extraction, streaming with Range support, likes, listening history and play counts, playlists (CRUD, ordering, duplicate, follow, cover, collaborators), albums, genres, search, suggestions, search history, trending, modular recommendations, home feed, profile content
-- [~] Player UI: player bar, mini-player, full-screen player with 3 visualizers and waveform, queue panel, Media Session controls, keyboard shortcuts, persisted state
-- [~] Pages: Landing, Login, Register, Forgot/Reset password, Verify email, Home, Explore, Genre, Upload, About
+- [x] Phase 3 (verified 2026-11-06):
+  - Upload pipeline (API tested with a generated WAV): 201 → background processing → READY with duration/codec; duplicate → 409; spoofed `.mp3` → 415
+  - Streaming: HTTP 206 range responses; private audio returns 404 to anonymous users and 206 to the owner
+  - In the browser: uploaded audio plays, playback continues across page navigation, Media Session metadata is set, the listen is recorded in history (24 s, completed), and the queue/position is restored after reload
+  - APIs: comments, playlist create/add (dedupes, ignores invalid IDs)/visibility/background, likes, reports, search
+  - Pages rendered and checked: Home, Explore, Genre, Track, Playlist, Profile, Search, History, Uploads (edit dialog)
+- [~] Built but only smoke-tested (route loads without error): Album, Library, Favorites, Notifications pages; drag-and-drop playlist reorder, collaborators dialog and profile editing UI not yet clicked through
+- [~] Browser-side upload UI (drag & drop + client waveform/loudness/BPM analysis) not yet clicked through; the API it calls is verified
 
 ### Not built yet: these sidebar links currently lead to 404 pages
-- [ ] Pages: Search, Library, Favorites, History, Uploads (management), Track, Playlist, Album, User profile (`/u/[username]`), Equalizer, Settings (account/privacy/appearance), Notifications, Artist dashboard, Admin, Moderation, Mixing Studio, Community themes
-- [ ] APIs: `/reports` (the report dialog calls it), `/notifications`, admin/moderation endpoints, copyright claims, themes gallery, mixes
+- [ ] Pages: Equalizer, Mixing Studio, Settings (account/privacy/appearance), Artist dashboard, Admin, Moderation, Community themes
+- [ ] APIs: admin/moderation endpoints (reports are collected but there's no review UI yet), copyright takedown claims, themes gallery, mixes
+
+### Known limitations
+- BPM, waveform and loudness come from the browser at upload time; files uploaded via the raw API without `analysis` have no waveform/BPM (no server-side decoder without ffmpeg)
+- Search uses case-insensitive substring matching; swap in Postgres full-text or Meilisearch for large instances (`src/server/modules/search/service.ts`)
+- Rate limiting and the job queue are in-process (single-instance deployment)
 - [ ] Phase 4: Equalizer page (engine support exists), Mixing Studio
 - [ ] Phase 5: theme editor UI (the theme engine exists), community themes, comments
 - [ ] Phase 6: artist dashboard, moderation/admin dashboards, notifications UI

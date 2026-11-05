@@ -426,6 +426,18 @@ const tr: typeof en = {
     title: "Bildirimler",
     markAllRead: "Tümünü okundu işaretle",
     empty: "Her şeyi gördün.",
+    types: {
+      follow: "{name} seni takip etmeye başladı",
+      track_like: "{name}, “{title}” parçasını beğendi",
+      playlist_follow: "{name}, “{title}” çalma listeni takip etti",
+      playlist_invite: "{name}, “{title}” çalma listesine seni ekledi veya listeyi düzenledi",
+      comment: "{name}, “{title}” parçasına yorum yaptı",
+      upload_ready: "“{title}” işlendi ve hazır",
+      upload_failed: "“{title}” işlenemedi",
+      content_removed: "“{title}” moderatörler tarafından kaldırıldı",
+      report_resolved: "Gönderdiğin bir bildirim incelendi",
+      account_status: "Hesap durumun değişti",
+    },
   },
   moderation: {
     reportTitle: "İçeriği bildir",

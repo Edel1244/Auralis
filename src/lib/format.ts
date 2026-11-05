@@ -22,6 +22,7 @@ export function formatBytes(bytes: number) {
 
 /** Total length as "1 h 12 min" / "38 min". */
 export function formatLength(ms: number) {
+  if (ms > 0 && ms < 60000) return `${Math.round(ms / 1000)} s`;
   const min = Math.round(ms / 60000);
   if (min < 60) return `${min} min`;
   return `${Math.floor(min / 60)} h ${min % 60} min`;

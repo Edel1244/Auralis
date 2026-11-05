@@ -20,7 +20,7 @@ function HoverPlay({ onPlay, playing, label }: { onPlay: () => void; playing: bo
       }}
       aria-label={label}
       className={cn(
-        "absolute bottom-2 right-2 flex h-11 w-11 items-center justify-center rounded-full bg-primary text-white shadow-[0_10px_30px_-8px_var(--au-primary)] transition-all duration-200",
+        "absolute bottom-2 right-2 z-10 flex h-11 w-11 items-center justify-center rounded-full bg-primary text-white shadow-[0_10px_30px_-8px_var(--au-primary)] transition-all duration-200",
         playing ? "translate-y-0 opacity-100" : "translate-y-2 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 group-focus-within:translate-y-0 group-focus-within:opacity-100",
       )}
     >

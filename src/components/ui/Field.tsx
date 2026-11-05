@@ -17,16 +17,28 @@ export const Input = forwardRef<HTMLInputElement, React.InputHTMLAttributes<HTML
   },
 );
 
-export const Textarea = forwardRef<HTMLTextAreaElement, React.TextareaHTMLAttributes<HTMLTextAreaElement>>(
-  function Textarea({ className, ...rest }, ref) {
-    return <textarea ref={ref} className={cn(inputBase, "min-h-24 py-2.5", className)} {...rest} />;
+export const Textarea = forwardRef<HTMLTextAreaElement, React.TextareaHTMLAttributes<HTMLTextAreaElement> & { invalid?: boolean }>(
+  function Textarea({ className, invalid, ...rest }, ref) {
+    return (
+      <textarea
+        ref={ref}
+        aria-invalid={invalid || undefined}
+        className={cn(inputBase, "min-h-24 py-2.5", invalid && "border-danger", className)}
+        {...rest}
+      />
+    );
   },
 );
 
-export const Select = forwardRef<HTMLSelectElement, React.SelectHTMLAttributes<HTMLSelectElement>>(
-  function Select({ className, children, ...rest }, ref) {
+export const Select = forwardRef<HTMLSelectElement, React.SelectHTMLAttributes<HTMLSelectElement> & { invalid?: boolean }>(
+  function Select({ className, children, invalid, ...rest }, ref) {
     return (
-      <select ref={ref} className={cn(inputBase, "h-11 appearance-none pr-8", className)} {...rest}>
+      <select
+        ref={ref}
+        aria-invalid={invalid || undefined}
+        className={cn(inputBase, "h-11 appearance-none pr-8", invalid && "border-danger", className)}
+        {...rest}
+      >
         {children}
       </select>
     );

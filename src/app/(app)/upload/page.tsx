@@ -63,12 +63,12 @@ function UploadInner() {
   const [notice, setNotice] = useState<string | null>(null);
   const input = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    if (!artwork) return setArtPreview(null);
-    const url = URL.createObjectURL(artwork);
-    setArtPreview(url);
-    return () => URL.revokeObjectURL(url);
-  }, [artwork]);
+  // Revoke the preview object URL when it changes or the page unmounts.
+  useEffect(() => () => void (artPreview && URL.revokeObjectURL(artPreview)), [artPreview]);
+  const chooseArtwork = (file: File | null) => {
+    setArtwork(file);
+    setArtPreview(file ? URL.createObjectURL(file) : null);
+  };
 
   const update = useCallback((key: string, patch: Partial<Item>) => {
     setItems((list) => list.map((i) => (i.key === key ? { ...i, ...patch } : i)));
@@ -375,7 +375,7 @@ function UploadInner() {
                   )}
                 </span>
                 <span className="text-sm font-semibold text-primary">{t("upload.chooseArtwork")}</span>
-                <input type="file" accept="image/jpeg,image/png,image/webp,image/gif" hidden onChange={(e) => setArtwork(e.target.files?.[0] ?? null)} />
+                <input type="file" accept="image/jpeg,image/png,image/webp,image/gif" hidden onChange={(e) => chooseArtwork(e.target.files?.[0] ?? null)} />
               </label>
               <Field label={t("upload.genre")}>
                 {(p) => (

@@ -91,7 +91,9 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   const [source, setSource] = useState<string | null>(null);
   const listen = useRef<{ trackId: string; ms: number; last: number | null; duration: number; source: string | null } | null>(null);
   const authRef = useRef(authStatus);
-  authRef.current = authStatus;
+  useEffect(() => {
+    authRef.current = authStatus;
+  }, [authStatus]);
 
   const commitQueue = useCallback((q: Q.QueueState<Track>) => {
     queueRef.current = q;

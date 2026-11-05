@@ -424,6 +424,18 @@ const en = {
     title: "Notifications",
     markAllRead: "Mark all as read",
     empty: "You're all caught up.",
+    types: {
+      follow: "{name} started following you",
+      track_like: "{name} liked “{title}”",
+      playlist_follow: "{name} followed your playlist “{title}”",
+      playlist_invite: "{name} added you to or edited the playlist “{title}”",
+      comment: "{name} commented on “{title}”",
+      upload_ready: "“{title}” finished processing and is ready",
+      upload_failed: "“{title}” could not be processed",
+      content_removed: "“{title}” was removed by moderators",
+      report_resolved: "A report you filed was reviewed",
+      account_status: "Your account status changed",
+    },
   },
   moderation: {
     reportTitle: "Report content",
