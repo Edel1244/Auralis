@@ -22,6 +22,6 @@ ORIGINALS_EMAIL=you@example.com ORIGINALS_PASSWORD='…' \
 ```
 
 `publish.ts` signs in (or creates) the artist account, creates the albums
-"Kış Masalları" and "Sakin Sular", uploads the tracks with covers and analysis,
-and builds the public playlist "Sakinleştirici Melodiler". Re-running skips
+"Winter Tales" and "Still Waters", uploads the tracks with covers and analysis,
+and builds the public playlist "Calm Melodies". Re-running skips
 tracks that already exist.

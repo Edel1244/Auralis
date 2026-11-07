@@ -69,7 +69,7 @@ async function main() {
   if (!cookie) fail("No session cookie received.");
   await call("/me/profile", {
     method: "PATCH",
-    body: { displayName: ARTIST, isArtist: true, bio: "Sakin, özgün müzikler: piyano, keman ve yaylılar. Hepsi AURALIS için üretildi, CC BY 4.0. / Calm original music for piano, violin and strings, made for AURALIS (CC BY 4.0)." },
+    body: { displayName: ARTIST, isArtist: true, bio: "Calm original music for piano, violin and strings, made for AURALIS. Free to use and remix under CC BY 4.0." },
   });
   for (const kind of ["avatar", "banner"]) {
     const f = new FormData();
@@ -140,10 +140,10 @@ async function main() {
   }
 
   const playlists = (await call<{ items: { id: string; title: string }[] }>("/me/playlists")).json.items ?? [];
-  const title = "Sakinleştirici Melodiler";
+  const title = "Calm Melodies";
   if (!playlists.some((p) => p.title === title)) {
     const pl = await call<{ playlist: { id: string } }>("/playlists", {
-      body: { title, description: "Piyano, keman ve kış esintili sakin parçalar: çalışırken, okurken ya da uyumadan önce. / Calm piano, violin and wintry pieces for focus, reading or sleep.", visibility: "PUBLIC" },
+      body: { title, description: "Calm piano, violin and wintry pieces for focus, reading or sleep.", visibility: "PUBLIC" },
     });
     if (pl.status !== 201) fail("Playlist failed:", pl.json);
     await call(`/playlists/${pl.json.playlist.id}/tracks`, { body: { trackIds } });
