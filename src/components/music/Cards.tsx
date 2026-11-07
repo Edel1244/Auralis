@@ -117,15 +117,24 @@ export function ArtistCard({ user, sub }: { user: PublicUser; sub?: string }) {
   );
 }
 
-/** Responsive horizontal shelf that becomes a grid on wide screens. */
+/**
+ * Horizontal shelf of cards. Cards keep a fixed width (never stretch to fill
+ * the row, so one or two items don't turn into giant tiles) and the row
+ * scrolls sideways when there are more than fit.
+ */
 export function Shelf({ children }: { children: React.ReactNode }) {
   return (
-    <div className="-mx-3 grid auto-cols-[minmax(150px,1fr)] grid-flow-col gap-1 overflow-x-auto pb-2 sm:auto-cols-[minmax(170px,1fr)] xl:grid-flow-row xl:grid-cols-6">
+    <div className="-mx-3 grid snap-x auto-cols-[clamp(140px,40vw,196px)] grid-flow-col justify-start gap-1 overflow-x-auto overscroll-x-contain pb-2 [&>*]:snap-start">
       {children}
     </div>
   );
 }
 
+/**
+ * Wrapping card grid sized by the space it actually has (not the screen width,
+ * which ignores the sidebar and window size): as many ~160 px columns as fit.
+ * auto-fill keeps empty tracks, so a few items never stretch.
+ */
 export function CardGrid({ children }: { children: React.ReactNode }) {
-  return <div className="-mx-3 grid grid-cols-2 gap-1 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">{children}</div>;
+  return <div className="-mx-3 grid grid-cols-[repeat(auto-fill,minmax(150px,1fr))] gap-1">{children}</div>;
 }

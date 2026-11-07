@@ -148,7 +148,7 @@ export default function HomePage() {
                   </Link>
                 }
               />
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
+              <div className="grid grid-cols-[repeat(auto-fill,minmax(140px,1fr))] gap-3">
                 {s.genres.slice(0, 12).map((g) => (
                   <GenreTile key={g.id} genre={g} />
                 ))}

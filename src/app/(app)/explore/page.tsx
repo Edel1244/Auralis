@@ -24,7 +24,7 @@ export default function ExplorePage() {
       <h1 className="font-display text-3xl font-bold tracking-tight">{t("nav.explore")}</h1>
       <section>
         <SectionHeader title={t("search.genres")} />
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
+        <div className="grid grid-cols-[repeat(auto-fill,minmax(140px,1fr))] gap-3">
           {genres.data.items.map((g) => (
             <GenreTile key={g.id} genre={g} count={g.trackCount} />
           ))}
