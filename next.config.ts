@@ -31,6 +31,14 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+  // Let other devices on the home network load the dev server (e.g. the desktop/Android app on another machine).
+  allowedDevOrigins: ["192.168.1.123"],
+  experimental: {
+    // The dev-only MCP endpoint writes every browser/server log line to .next/dev/logs.
+    // The dev file watcher sometimes reacts to those writes, which reloads the page,
+    // which logs again: an endless reload/flicker loop. AURALIS doesn't use it.
+    mcpServer: false,
+  },
   // Self-hosting: produce a minimal standalone server for the Docker image.
   output: "standalone",
   poweredByHeader: false,
