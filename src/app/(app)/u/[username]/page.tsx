@@ -2,7 +2,7 @@
 
 import { use, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Lock, Pencil, Flag, Play } from "lucide-react";
+import { Lock, Pencil, Flag, Play, Eye, EyeOff } from "lucide-react";
 import { useT, useI18n } from "@/i18n/I18nProvider";
 import { useApi } from "@/lib/useApi";
 import { api, ApiClientError } from "@/lib/api";
@@ -115,7 +115,9 @@ export default function ProfilePage({ params }: PageProps<"/u/[username]">) {
   const player = usePlayer();
   const { user: me, setUser } = useSession();
   const profile = useApi<Profile>(`/users/${username}`);
-  const content = useApi<Content>(`/users/${username}/content`);
+  // Owners can preview their profile exactly as visitors see it (no private/unlisted items).
+  const [visitorView, setVisitorView] = useState(false);
+  const content = useApi<Content>(`/users/${username}/content${visitorView ? "?view=public" : ""}`);
   const [tab, setTab] = useState<Tab>("overview");
   const [edit, setEdit] = useState(false);
   const [report, setReport] = useState(false);
@@ -156,9 +158,14 @@ export default function ProfilePage({ params }: PageProps<"/u/[username]">) {
           </div>
           <div className="flex items-center gap-2 pb-1">
             {isSelf ? (
-              <Button variant="secondary" onClick={() => setEdit(true)}>
-                <Pencil size={15} /> {t("profile.editProfile")}
-              </Button>
+              <>
+                <Button variant="secondary" onClick={() => setEdit(true)}>
+                  <Pencil size={15} /> {t("profile.editProfile")}
+                </Button>
+                <Button variant={visitorView ? "primary" : "outline"} onClick={() => setVisitorView((v) => !v)} aria-pressed={visitorView}>
+                  {visitorView ? <EyeOff size={15} /> : <Eye size={15} />} {visitorView ? t("profile.exitVisitorView") : t("profile.viewAsVisitor")}
+                </Button>
+              </>
             ) : (
               me && (
                 <>
@@ -182,6 +189,19 @@ export default function ProfilePage({ params }: PageProps<"/u/[username]">) {
       </header>
 
       {user.bio && <p className="max-w-3xl whitespace-pre-line text-muted">{user.bio}</p>}
+
+      {isSelf && (
+        <p
+          role="status"
+          className={cn(
+            "flex items-start gap-2 rounded-2xl border px-4 py-3 text-sm",
+            visitorView ? "border-primary/40 bg-primary/10 text-fg" : "border-line bg-surface text-muted",
+          )}
+        >
+          {visitorView ? <Eye size={16} className="mt-0.5 shrink-0 text-primary" /> : <Lock size={16} className="mt-0.5 shrink-0" />}
+          {visitorView ? t("profile.visitorBanner") : t("profile.ownerHint")}
+        </p>
+      )}
 
       {profile.data.restricted || c?.restricted ? (
         <EmptyState icon={<Lock size={26} />} title={t("profile.privateProfile")} />
@@ -242,7 +262,7 @@ export default function ProfilePage({ params }: PageProps<"/u/[username]">) {
               )}
               {c.playlists.length > 0 && (
                 <section>
-                  <SectionHeader title={t("profile.publicPlaylists")} />
+                  <SectionHeader title={isSelf && !visitorView ? t("nav.playlists") : t("profile.publicPlaylists")} />
                   <CardGrid>
                     {c.playlists.slice(0, 6).map((p) => (
                       <PlaylistCard key={p.id} playlist={p} />

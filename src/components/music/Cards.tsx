@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Play, Pause } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { Avatar, Cover } from "@/components/ui/misc";
+import { VisibilityBadge } from "./VisibilityBadge";
 import { usePlayer } from "@/player/PlayerProvider";
 import { useT } from "@/i18n/I18nProvider";
 import { api } from "@/lib/api";
@@ -41,6 +42,7 @@ export function TrackCard({ track, list, index, source }: { track: Track; list: 
     <div className={cardBase}>
       <div className="relative mb-3">
         <Cover src={track.coverUrl} seed={track.id} className="w-full shadow-lg" />
+        <VisibilityBadge visibility={track.visibility} className="absolute left-2 top-2 z-10" />
         <HoverPlay playing={playing} label={`${t("player.play")} ${track.title}`} onPlay={() => (isCurrent ? p.toggle() : p.playTracks(list, index, source))} />
       </div>
       <Link href={`/track/${track.id}`} className="block truncate text-sm font-semibold after:absolute after:inset-0">
@@ -58,6 +60,7 @@ export function PlaylistCard({ playlist }: { playlist: Playlist }) {
     <div className={cardBase}>
       <div className="relative mb-3">
         <Cover src={playlist.coverUrl} mosaic={playlist.coverMosaic} seed={playlist.id} className="w-full shadow-lg" />
+        <VisibilityBadge visibility={playlist.visibility} className="absolute left-2 top-2 z-10" />
         {playlist.trackCount > 0 && (
           <HoverPlay
             playing={false}
@@ -86,6 +89,7 @@ export function AlbumCard({ album }: { album: Album }) {
     <div className={cardBase}>
       <div className="relative mb-3">
         <Cover src={album.coverUrl} seed={album.id} className="w-full shadow-lg" />
+        <VisibilityBadge visibility={album.visibility} className="absolute left-2 top-2 z-10" />
         <HoverPlay
           playing={false}
           label={`${t("player.play")} ${album.title}`}

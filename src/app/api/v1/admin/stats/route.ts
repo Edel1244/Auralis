@@ -2,6 +2,7 @@ import { route, json } from "@/server/http";
 import { requireRole } from "@/server/auth/session";
 import { db } from "@/server/db";
 import { jobStats } from "@/server/jobs/queue";
+import { emailDeliveryMode } from "@/server/mail";
 
 const DAY = 24 * 3600 * 1000;
 
@@ -46,6 +47,7 @@ export const GET = route(async (req) => {
     storage: { usedBytes: Number(storage._sum.storageUsedBytes ?? 0), allocatedBytes: Number(storage._sum.storageQuotaBytes ?? 0) },
     moderation: { openReports, openClaims },
     jobs: jobStats(),
+    emailDelivery: emailDeliveryMode(),
     daily: { uploads: series(uploadsDaily), plays: series(playsDaily), signups: series(signupsDaily) },
     topStorage: topUploaders.map((u) => ({ ...u, storageUsedBytes: Number(u.storageUsedBytes), storageQuotaBytes: Number(u.storageQuotaBytes) })),
   });

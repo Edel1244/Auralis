@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { MailWarning } from "lucide-react";
 import { useT } from "@/i18n/I18nProvider";
 import { useSession } from "@/state/session";
@@ -15,30 +16,43 @@ import { MobileNav } from "./MobileNav";
 import { Splash } from "./Splash";
 
 function VerifyBanner() {
-  const { user } = useSession();
+  const { user, instance } = useSession();
   const t = useT();
   const toast = useToast();
   const [sent, setSent] = useState(false);
   if (!user || user.emailVerified) return null;
+  // Without SMTP no real email goes out: say so instead of pretending, and in
+  // development point to the mailbox page where the link can be opened.
+  const noRealEmail = instance?.emailDelivery === "outbox";
   return (
     <div className="mx-4 mt-2 flex flex-wrap items-center gap-3 rounded-2xl border border-warning/30 bg-warning/10 px-4 py-2.5 text-sm md:mx-6">
       <MailWarning size={18} className="text-warning" />
-      <span className="flex-1">{t("auth.verifyBanner")}</span>
-      <button
-        disabled={sent}
-        className="font-semibold text-warning hover:underline disabled:opacity-50"
-        onClick={async () => {
-          try {
-            await api("/auth/resend-verification", { method: "POST" });
-            setSent(true);
-            toast(t("auth.verificationSent"), "success");
-          } catch (e) {
-            toast((e as Error).message, "error");
-          }
-        }}
-      >
-        {t("auth.resendVerification")}
-      </button>
+      <span className="flex-1">
+        {t("auth.verifyBanner")}
+        {noRealEmail && <span className="mt-0.5 block text-xs text-muted">{t("auth.mailNotConfigured")}</span>}
+      </span>
+      {instance?.devMailbox ? (
+        <Link href="/dev/mailbox" className="font-semibold text-warning hover:underline">
+          {t("auth.openDevMailbox")}
+        </Link>
+      ) : (
+        <button
+          disabled={sent}
+          className="font-semibold text-warning hover:underline disabled:opacity-50"
+          onClick={async () => {
+            try {
+              const r = await api<{ delivery: "smtp" | "outbox" }>("/auth/resend-verification", { method: "POST" });
+              setSent(true);
+              if (r.delivery === "smtp") toast(t("auth.verificationSent"), "success");
+              else toast(t("auth.mailNotConfigured"), "error");
+            } catch (e) {
+              toast((e as Error).message, "error");
+            }
+          }}
+        >
+          {t("auth.resendVerification")}
+        </button>
+      )}
     </div>
   );
 }

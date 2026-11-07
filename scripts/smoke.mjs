@@ -134,6 +134,18 @@ const pl = await call("/playlists", { method: "POST", cookie, body: { title: "Sm
 const added = await call(`/playlists/${pl.json?.playlist?.id}/tracks`, { method: "POST", cookie, body: { trackIds: [trackId] } });
 check("playlist create + add", pl.status === 201 && added.json?.added === 1);
 
+// A private playlist must never reach anyone but its owner (search, profile, visitor preview).
+const secretTitle = `Secret list ${suffix}`;
+const secret = (await call("/playlists", { method: "POST", cookie, body: { title: secretTitle, visibility: "PRIVATE" } })).json?.playlist;
+const hasSecret = (items) => (items ?? []).some((p) => p.id === secret?.id);
+check("private playlist created", secret?.visibility === "PRIVATE");
+check("private playlist hidden from anonymous search", !hasSecret((await call(`/search?q=${encodeURIComponent(secretTitle)}&type=playlists`)).json?.items));
+check("private playlist hidden from other user's search", !hasSecret((await call(`/search?q=${encodeURIComponent(secretTitle)}&type=playlists`, { cookie: otherCookie })).json?.items));
+check("private playlist hidden on public profile", !hasSecret((await call(`/users/${username}/content`)).json?.playlists));
+check("private playlist hidden in owner's visitor preview", !hasSecret((await call(`/users/${username}/content?view=public`, { cookie })).json?.playlists));
+check("owner still sees private playlist on own profile", hasSecret((await call(`/users/${username}/content`, { cookie })).json?.playlists));
+check("private playlist 404 for other user", (await call(`/playlists/${secret?.id}`, { cookie: otherCookie })).status === 404);
+
 // Cleanup: deleting the account removes the track, playlist and stored files.
 const del = await call("/me/account", { method: "DELETE", cookie, body: { password } });
 check("account deletion (cleanup)", del.status === 200);

@@ -1,6 +1,6 @@
 # AURALIS: Development Progress
 
-_Last updated: 2026-11-06. All seven phases complete._
+_Last updated: 2026-11-07. All seven phases complete; post-release fixes in progress._
 
 Legend: ✅ implemented and verified · ☑️ implemented, verified indirectly (API/unit test or smoke test only) · 🟡 partial (see note) · 📋 planned
 
@@ -94,6 +94,10 @@ Legend: ✅ implemented and verified · ☑️ implemented, verified indirectly 
 ### 16. Security & performance
 - ✅ Everything in [SECURITY.md](SECURITY.md): rate limits (per endpoint + global writes), CSRF, CSP and security headers, upload hardening, privacy controls, safe errors, audit and structured logs, backups (`scripts/backup.sh`)
 - ✅ Lazy image loading, WebP images, Range streaming, pagination, indexed queries, cached immutable images, rAF-isolated playhead re-renders
+
+## Post-release fixes (2026-11-07)
+- ✅ **Visibility clarity.** Private/unlisted tracks, albums and playlists now show a lock/link badge on cards and in the sidebar. Owners can switch their profile to **View as visitors** (`GET /users/:u/content?view=public`). Smoke tests prove private playlists are absent from anonymous and other-user search, from the public profile and from the visitor preview. Note: the server never leaked private items; the owner's own view simply looked identical to the public one.
+- ✅ **Honest email status.** `/auth/me` reports `instance.emailDelivery` (`smtp` | `outbox`). Without `SMTP_URL`, the verify banner no longer claims "sent". In development it links to **/dev/mailbox** (`GET /api/v1/dev/mailbox`), which shows only the signed-in user's own outbox mail. That endpoint returns 404 in production or when SMTP is configured. The admin overview warns when outgoing email isn't configured. Unit tests: `tests/mail-outbox.test.ts`.
 
 ## Known limitations
 - Single-instance defaults: in-memory rate limiter and job queue (swap points documented in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md))

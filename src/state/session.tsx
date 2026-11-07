@@ -2,7 +2,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { api } from "@/lib/api";
-import type { Me, Preferences } from "@/lib/types";
+import type { InstanceInfo, Me, Preferences } from "@/lib/types";
 
 type Status = "loading" | "authenticated" | "anonymous";
 
@@ -10,6 +10,8 @@ type SessionValue = {
   status: Status;
   user: Me | null;
   preferences: Preferences | null;
+  /** Server capabilities (e.g. whether real email is sent). */
+  instance: InstanceInfo | null;
   refresh: () => Promise<void>;
   setUser: (u: Me) => void;
   logout: () => Promise<void>;
@@ -22,10 +24,12 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   const [status, setStatus] = useState<Status>("loading");
   const [user, setUserState] = useState<Me | null>(null);
   const [preferences, setPreferences] = useState<Preferences | null>(null);
+  const [instance, setInstance] = useState<InstanceInfo | null>(null);
 
   const refresh = useCallback(async () => {
     try {
-      const r = await api<{ user: Me | null; preferences: Preferences | null }>("/auth/me");
+      const r = await api<{ user: Me | null; preferences: Preferences | null; instance?: InstanceInfo }>("/auth/me");
+      setInstance(r.instance ?? null);
       setUserState(r.user);
       setPreferences(r.preferences);
       setStatus(r.user ? "authenticated" : "anonymous");
@@ -63,8 +67,8 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   );
 
   const value = useMemo(
-    () => ({ status, user, preferences, refresh, setUser, logout, savePreferences }),
-    [status, user, preferences, refresh, setUser, logout, savePreferences],
+    () => ({ status, user, preferences, instance, refresh, setUser, logout, savePreferences }),
+    [status, user, preferences, instance, refresh, setUser, logout, savePreferences],
   );
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;
 }

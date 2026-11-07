@@ -9,19 +9,25 @@ import { privacyOf, toPublicUser } from "@/server/modules/users/dto";
 
 type Ctx = RouteContext<"/api/v1/users/[username]/content">;
 
-/** A profile's public content: uploads, albums, playlists, top tracks, stats (privacy-aware). */
+/**
+ * A profile's content: uploads, albums, playlists, top tracks, stats (privacy-aware).
+ * The owner sees everything, including private/unlisted items. With ?view=public
+ * the owner previews exactly what visitors see (privacy settings applied).
+ */
 export const GET = route<Ctx>(async (req, ctx) => {
   const viewer = (await getAuth(req))?.user ?? null;
   const user = await db.user.findUnique({ where: { username: (await ctx.params).username.toLowerCase() } });
   if (!user || user.status === "BANNED") throw notFound("User");
   const isSelf = viewer?.id === user.id;
+  const asVisitor = isSelf && req.nextUrl.searchParams.get("view") === "public";
+  const ownerView = isSelf && !asVisitor;
   const staff = viewer ? hasRole(viewer, "MODERATOR") : false;
-  if (user.isPrivate && !isSelf && !staff) return json({ restricted: true });
+  if (user.isPrivate && !ownerView && !(staff && !isSelf)) return json({ restricted: true, asVisitor });
   const privacy = privacyOf(user);
 
-  const trackWhere = isSelf ? { ownerId: user.id, status: "READY" as const } : { ...publicTrackWhere, ownerId: user.id };
+  const trackWhere = ownerView ? { ownerId: user.id, status: "READY" as const } : { ...publicTrackWhere, ownerId: user.id };
   const recentlyPlayed =
-    privacy.showListening || isSelf
+    privacy.showListening || ownerView
       ? db.playEvent
           .findMany({
             where: { userId: user.id, track: publicTrackWhere },
@@ -39,26 +45,26 @@ export const GET = route<Ctx>(async (req, ctx) => {
     findTracks(trackWhere, viewer, { take: 50 }),
     findTracks(trackWhere, viewer, { orderBy: [{ playCount: "desc" }], take: 5 }),
     db.album.findMany({
-      where: { ownerId: user.id, ...(isSelf ? {} : { visibility: "PUBLIC" }) },
+      where: { ownerId: user.id, ...(ownerView ? {} : { visibility: "PUBLIC" }) },
       include: albumInclude,
       orderBy: { createdAt: "desc" },
     }),
     db.playlist
       .findMany({
-        where: { ownerId: user.id, ...(isSelf ? {} : { visibility: "PUBLIC" }) },
+        where: { ownerId: user.id, ...(ownerView ? {} : { visibility: "PUBLIC" }) },
         include: playlistSummaryInclude,
         orderBy: { updatedAt: "desc" },
         take: 50,
       })
       .then((r) => toPlaylistSummaries(r, viewer)),
     db.track.aggregate({ where: trackWhere, _sum: { playCount: true, likeCount: true }, _count: true }),
-    privacy.showFollowing || isSelf
+    privacy.showFollowing || ownerView
       ? db.follow.findMany({ where: { followingId: user.id }, include: { follower: true }, take: 60, orderBy: { createdAt: "desc" } })
       : Promise.resolve(null),
-    privacy.showFollowing || isSelf
+    privacy.showFollowing || ownerView
       ? db.follow.findMany({ where: { followerId: user.id }, include: { following: true }, take: 60, orderBy: { createdAt: "desc" } })
       : Promise.resolve(null),
-    privacy.showStats || isSelf
+    privacy.showStats || ownerView
       ? db.playEvent.aggregate({ where: { userId: user.id }, _sum: { msPlayed: true }, _count: true })
       : Promise.resolve(null),
     recentlyPlayed,
@@ -66,10 +72,11 @@ export const GET = route<Ctx>(async (req, ctx) => {
   return json({
     recentlyPlayed: recent,
     restricted: false,
+    asVisitor,
     tracks,
     popular,
-    albums: albums.filter((a) => a._count.tracks > 0 || isSelf).map(toAlbum),
-    playlists: playlists.filter((p) => p.trackCount > 0 || isSelf),
+    albums: albums.filter((a) => a._count.tracks > 0 || ownerView).map(toAlbum),
+    playlists: playlists.filter((p) => p.trackCount > 0 || ownerView),
     totals: { tracks: totals._count, plays: totals._sum.playCount ?? 0, likes: totals._sum.likeCount ?? 0 },
     followers: followers?.map((f) => toPublicUser(f.follower)) ?? null,
     following: following?.map((f) => toPublicUser(f.following)) ?? null,

@@ -27,6 +27,13 @@ export type Me = PublicUser & {
   storageQuotaBytes: number;
 };
 
+export type InstanceInfo = {
+  /** "smtp" = real email is sent; "outbox" = messages only go to the server's development outbox. */
+  emailDelivery: "smtp" | "outbox";
+  /** Development mailbox page (/dev/mailbox) available. */
+  devMailbox: boolean;
+};
+
 export type Preferences = {
   appearance: Record<string, unknown>;
   playback: Record<string, unknown>;

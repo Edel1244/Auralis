@@ -29,6 +29,7 @@ type Stats = {
   moderation: { openReports: number; openClaims: number };
   jobs: { queued: number; running: number };
   daily: { uploads: { day: string; value: number }[]; plays: { day: string; value: number }[]; signups: { day: string; value: number }[] };
+  emailDelivery?: "smtp" | "outbox";
   topStorage: { id: string; username: string; displayName: string; storageUsedBytes: number; storageQuotaBytes: number }[];
 };
 type AdminUser = PublicUser & {
@@ -45,6 +46,12 @@ function Overview() {
   if (!data) return <PageState loading={loading} error={error} onRetry={reload} />;
   return (
     <div className="space-y-6">
+      {data.emailDelivery === "outbox" && (
+        <div role="alert" className="rounded-2xl border border-warning/30 bg-warning/10 px-4 py-3 text-sm">
+          <p className="font-semibold text-warning">{t("admin.mailWarningTitle")}</p>
+          <p className="mt-1 text-muted">{t("admin.mailWarning")}</p>
+        </div>
+      )}
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
         <StatTile label={t("admin.totalUsers")} value={n(data.users.total)} sub={`+${data.users.new30d} · 30d`} />
         <StatTile label={t("admin.tracks")} value={n(data.tracks.total)} sub={Object.entries(data.tracks.byStatus).map(([k, v]) => `${k} ${v}`).join(" · ")} />

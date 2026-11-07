@@ -4,10 +4,24 @@ import path from "node:path";
 import nodemailer, { type Transporter } from "nodemailer";
 import { env } from "./env";
 import { logger } from "./logger";
+import { OUTBOX_DIR } from "./mail-outbox";
 
 let transporter: Transporter | null = null;
 
 type Mail = { to: string; subject: string; text: string; html?: string };
+
+/** "smtp" when real email is sent; "outbox" when messages only go to .data/mail (no SMTP_URL). */
+export function emailDeliveryMode(): "smtp" | "outbox" {
+  return env().SMTP_URL ? "smtp" : "outbox";
+}
+
+/**
+ * The development mailbox (/dev/mailbox) lets signed-in users read the outbox
+ * messages addressed to them. Never available in production.
+ */
+export function devMailboxEnabled() {
+  return emailDeliveryMode() === "outbox" && env().NODE_ENV !== "production";
+}
 
 /**
  * Sends mail through SMTP when SMTP_URL is configured. Otherwise (development)
@@ -22,7 +36,7 @@ export async function sendMail(mail: Mail) {
     logger.info("mail_sent", { to: mail.to, subject: mail.subject });
     return;
   }
-  const dir = path.resolve(".data/mail");
+  const dir = path.resolve(OUTBOX_DIR);
   await mkdir(dir, { recursive: true });
   const file = path.join(dir, `${Date.now()}-${mail.to.replace(/[^a-z0-9@.]/gi, "_")}.eml`);
   const body = `From: ${MAIL_FROM}\nTo: ${mail.to}\nSubject: ${mail.subject}\n\n${mail.text}\n`;

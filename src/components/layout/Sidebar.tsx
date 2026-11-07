@@ -10,6 +10,7 @@ import { useSession } from "@/state/session";
 import { useTheme } from "@/theme/ThemeProvider";
 import { useLibrary } from "@/state/library";
 import { Cover } from "@/components/ui/misc";
+import { VisibilityBadge } from "@/components/music/VisibilityBadge";
 import { NAV, SECONDARY_NAV, canSee, type NavItem } from "./nav";
 
 function isActive(pathname: string, href: string) {
@@ -138,7 +139,8 @@ export function Sidebar() {
                         <ListMusic size={15} />
                       </span>
                     )}
-                    {!collapsed && <span className="truncate">{p.title}</span>}
+                    {!collapsed && <span className="min-w-0 flex-1 truncate">{p.title}</span>}
+                    {!collapsed && <VisibilityBadge visibility={p.visibility} variant="icon" />}
                   </Link>
                 );
               })}
