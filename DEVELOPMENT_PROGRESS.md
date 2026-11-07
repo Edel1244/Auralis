@@ -106,6 +106,7 @@ Legend: ✅ implemented and verified · ☑️ implemented, verified indirectly 
 - ✅ **Bug fixes**: playlist cover mosaics no longer use artwork from tracks the viewer can't see, and one long playlist no longer starves the others; the studio track picker starts with an empty search.
 - ✅ **Desktop app** (`desktop/`, Electron): connects to a configurable server with a first-run setup screen, keeps navigation to that origin, update check via GitHub Releases, NSIS installer. Releases are built by `.github/workflows/desktop-release.yml` on `v*` tags.
 - ✅ **Android app** (`android/`, native Java WebView): first-run server setup through an `auralis-setup://` scheme honoured only on the bundled page, origin-locked navigation, file chooser for uploads, DownloadManager downloads, edge-to-edge insets, update check against `android-v*` releases. Built and signed by `.github/workflows/android-release.yml` (key held in repository secrets). Releases are titled "(Android)" and "(Desktop)".
+- ✅ **AURALIS Originals** (`scripts/originals/`): 8 original calm pieces (5 winter-themed) synthesized in code (additive piano, bowed strings, pads, celesta/bells, reverb) with generated cover art, 2 albums and a public playlist, published through the API. CC BY 4.0.
 
 ## Known limitations
 - Single-instance defaults: in-memory rate limiter and job queue (swap points documented in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md))
