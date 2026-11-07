@@ -30,11 +30,28 @@ function writeConfig(patch) {
   return next;
 }
 
+/** localhost, loopback, private IPv4 ranges, *.local/*.lan names and bare machine names. */
+function isLocalAddress(hostish) {
+  const host = String(hostish).replace(/^\[/, "").split(/[\]/:]/)[0].toLowerCase();
+  return (
+    host === "localhost" ||
+    host === "" ||
+    /^127\./.test(host) ||
+    /^10\./.test(host) ||
+    /^192\.168\./.test(host) ||
+    /^172\.(1[6-9]|2\d|3[01])\./.test(host) ||
+    /\.(local|lan|home|internal)$/.test(host) ||
+    /^[a-z0-9-]+$/.test(host)
+  );
+}
+
 /** Normalizes user input to an http(s) origin, or returns null. */
 function normalizeServerUrl(input) {
   let raw = String(input || "").trim();
   if (!raw) return null;
-  if (!/^https?:\/\//i.test(raw)) raw = (/^(localhost|127\.|\[::1\])/i.test(raw) ? "http://" : "https://") + raw;
+  // Without a scheme: local and home-network addresses (where self-hosted servers
+  // usually run plain HTTP) get http://, everything else https://.
+  if (!/^https?:\/\//i.test(raw)) raw = (isLocalAddress(raw) ? "http://" : "https://") + raw;
   try {
     const u = new URL(raw);
     if (u.protocol !== "http:" && u.protocol !== "https:") return null;
@@ -191,19 +208,28 @@ const fromSetupPage = (event) => {
   return typeof url === "string" && url.split(/[?#]/)[0] === SETUP_URL;
 };
 
-ipcMain.handle("setup:probe", async (event, input) => {
-  if (!fromSetupPage(event)) return { ok: false, reason: "forbidden" };
+/** Probes the typed address; when no scheme was typed, falls back from https to http. */
+async function resolveServer(input) {
   const origin = normalizeServerUrl(input);
   if (!origin) return { ok: false, reason: "invalid" };
-  return { ...(await probeServer(origin)), origin };
+  const probe = await probeServer(origin);
+  const typedScheme = /^https?:\/\//i.test(String(input).trim());
+  if (probe.ok || typedScheme || !origin.startsWith("https://")) return { ...probe, origin };
+  const plain = origin.replace(/^https:/, "http:");
+  const retry = await probeServer(plain);
+  return retry.ok ? { ...retry, origin: plain } : { ...probe, origin };
+}
+
+ipcMain.handle("setup:probe", async (event, input) => {
+  if (!fromSetupPage(event)) return { ok: false, reason: "forbidden" };
+  return resolveServer(input);
 });
 
 ipcMain.handle("setup:connect", async (event, input) => {
   if (!fromSetupPage(event)) return { ok: false, reason: "forbidden" };
-  const origin = normalizeServerUrl(input);
-  if (!origin) return { ok: false, reason: "invalid" };
-  const probe = await probeServer(origin);
-  if (!probe.ok) return { ...probe, origin };
+  const probe = await resolveServer(input);
+  if (!probe.ok) return probe;
+  const origin = probe.origin;
   writeConfig({ serverUrl: origin });
   await win.loadURL(`${origin}/home`);
   return { ok: true, origin };

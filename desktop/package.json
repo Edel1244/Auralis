@@ -1,7 +1,7 @@
 {
   "name": "auralis-desktop",
   "productName": "AURALIS",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "AURALIS desktop app: connects to an AURALIS server.",
   "license": "AGPL-3.0-only",
   "author": "AURALIS contributors",
