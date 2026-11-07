@@ -14,6 +14,7 @@ export class Mixer {
   private recordDest: MediaStreamAudioDestinationNode;
   private recorder: MediaRecorder | null = null;
   private chunks: Blob[] = [];
+  private autoRaf = 0;
   crossfader = 0;
 
   constructor() {
@@ -39,6 +40,34 @@ export class Mixer {
     const t = this.ctx.currentTime;
     this.a.out.gain.setTargetAtTime(ga, t, 0.005);
     this.b.out.gain.setTargetAtTime(gb, t, 0.005);
+  }
+
+/**
+   * Automatic transition to the other side: starts the target deck if it is
+   * paused and sweeps the crossfader there over `seconds` (equal-power).
+   * `onFrame` mirrors the crossfader position into the UI. Returns the target.
+   */
+  autoTransition(seconds: number, onFrame: (x: number) => void): "a" | "b" {
+    cancelAnimationFrame(this.autoRaf);
+    const target = this.crossfader <= 0 ? "b" : "a";
+    const deck = target === "a" ? this.a : this.b;
+    if (deck.el.paused) void deck.play();
+    const from = this.crossfader;
+    const to = target === "a" ? -1 : 1;
+    const start = performance.now();
+    const step = () => {
+      const p = Math.min(1, (performance.now() - start) / (seconds * 1000));
+      const x = from + (to - from) * p;
+      this.setCrossfader(x);
+      onFrame(x);
+      if (p < 1) this.autoRaf = requestAnimationFrame(step);
+    };
+    this.autoRaf = requestAnimationFrame(step);
+    return target;
+  }
+
+  cancelAutoTransition() {
+    cancelAnimationFrame(this.autoRaf);
   }
 
   setMasterVolume(v: number) {
@@ -77,6 +106,7 @@ export class Mixer {
   }
 
   dispose() {
+    cancelAnimationFrame(this.autoRaf);
     if (this.recording) this.recorder!.stop();
     this.a.dispose();
     this.b.dispose();

@@ -1,0 +1,61 @@
+{
+  "name": "auralis-desktop",
+  "productName": "AURALIS",
+  "version": "1.0.0",
+  "description": "AURALIS desktop app: connects to an AURALIS server.",
+  "license": "AGPL-3.0-only",
+  "author": "AURALIS contributors",
+  "homepage": "https://github.com/Edel1244/Auralis",
+  "main": "main.js",
+  "private": true,
+  "scripts": {
+    "start": "electron .",
+    "icon": "node scripts/make-icon.mjs",
+    "dist": "electron-builder --win --publish never",
+    "dist:dir": "electron-builder --win --dir --publish never"
+  },
+  "devDependencies": {
+    "electron": "45.2.3",
+    "electron-builder": "26.18.0"
+  },
+  "allowScripts": {
+    "electron@45.2.3": true
+  },
+  "build": {
+    "appId": "app.auralis.desktop",
+    "productName": "AURALIS",
+    "copyright": "AURALIS contributors · AGPL-3.0-only",
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "update.js",
+      "setup/**",
+      "build/icon.png",
+      "package.json"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "build/icon.png"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "AURALIS",
+      "artifactName": "AURALIS-Setup-${version}.${ext}"
+    }
+  }
+}

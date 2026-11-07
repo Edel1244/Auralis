@@ -61,17 +61,28 @@ export const playlistSummaryInclude = {
 
 type PlaylistSummaryRow = Prisma.PlaylistGetPayload<{ include: typeof playlistSummaryInclude }>;
 
+/** Tracks whose artwork may appear in a playlist's cover mosaic for this viewer. */
+function mosaicTrackWhere(viewer: Viewer): Prisma.TrackWhereInput {
+  const visible: Prisma.TrackWhereInput = { status: "READY", visibility: { not: "PRIVATE" } };
+  return viewer ? { OR: [visible, { ownerId: viewer.id, status: "READY" }] } : visible;
+}
+
 /** Adds derived fields (cover mosaic, total duration) to playlist rows in batch. */
 export async function toPlaylistSummaries(rows: PlaylistSummaryRow[], viewer: Viewer) {
   if (!rows.length) return [];
   const ids = rows.map((r) => r.id);
   const [entries, durations, follows] = await Promise.all([
-    db.playlistTrack.findMany({
-      where: { playlistId: { in: ids }, track: { status: "READY" } },
-      orderBy: { position: "asc" },
-      select: { playlistId: true, track: { select: { coverKey: true, album: { select: { coverKey: true } } } } },
-      take: ids.length * 12,
-    }),
+    // Per playlist, so one long playlist can't crowd the others out; only covers the viewer may see.
+    Promise.all(
+      ids.map((playlistId) =>
+        db.playlistTrack.findMany({
+          where: { playlistId, track: mosaicTrackWhere(viewer) },
+          orderBy: { position: "asc" },
+          select: { playlistId: true, track: { select: { coverKey: true, album: { select: { coverKey: true } } } } },
+          take: 12,
+        }),
+      ),
+    ).then((lists) => lists.flat()),
     db.$queryRaw<{ playlistId: string; ms: bigint }[]>`
       SELECT pt."playlistId", COALESCE(SUM(t."durationMs"),0)::bigint AS ms
       FROM "PlaylistTrack" pt JOIN "Track" t ON t.id = pt."trackId"

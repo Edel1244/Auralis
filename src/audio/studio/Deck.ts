@@ -47,6 +47,8 @@ export class Deck {
   private echoFeedback: GainNode;
   private echoWet: GainNode;
   private loopTimer = 0;
+  /** Fully decoded audio (for waveform, BPM and offline merge rendering). */
+  buffer: AudioBuffer | null = null;
   private abort: AbortController | null = null;
 
   state: DeckState = {
@@ -123,6 +125,7 @@ export class Deck {
     this.abort?.abort();
     this.abort = new AbortController();
     this.el.pause();
+    this.buffer = null;
     this.patch({ track, loading: true, error: null, peaks: null, bpm: track.bpm, cue: 0, loop: null, hotCues: [null, null, null, null], duration: 0 });
     this.el.src = track.streamUrl;
     this.el.preservesPitch = this.state.keyLock;
@@ -131,6 +134,7 @@ export class Deck {
       const res = await fetch(track.streamUrl, { credentials: "same-origin", signal: this.abort.signal });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const audio = await this.ctx.decodeAudioData(await res.arrayBuffer());
+      this.buffer = audio;
       const ch = Array.from({ length: Math.min(2, audio.numberOfChannels) }, (_, i) => audio.getChannelData(i));
       const mono = mixToMono(ch);
       const bpm = track.bpm ?? estimateBpm(mono, audio.sampleRate);
@@ -275,6 +279,7 @@ export class Deck {
 
   dispose() {
     this.abort?.abort();
+    this.buffer = null;
     cancelAnimationFrame(this.loopTimer);
     this.el.pause();
     this.el.removeAttribute("src");

@@ -20,6 +20,12 @@ export function TrackPicker({ open, onClose, onPick }: { open: boolean; onClose:
   const [items, setItems] = useState<Track[]>([]);
   const [loading, setLoading] = useState(false);
 
+  // Start each pick with a clean search box (the dialog is reused for both decks).
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (!open) setQ("");
+  }, [open]);
+
   useEffect(() => {
     if (!open) return;
     const ctrl = new AbortController();

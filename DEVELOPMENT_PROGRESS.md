@@ -99,12 +99,20 @@ Legend: ✅ implemented and verified · ☑️ implemented, verified indirectly 
 - ✅ **Visibility clarity.** Private/unlisted tracks, albums and playlists now show a lock/link badge on cards and in the sidebar. Owners can switch their profile to **View as visitors** (`GET /users/:u/content?view=public`). Smoke tests prove private playlists are absent from anonymous and other-user search, from the public profile and from the visitor preview. Note: the server never leaked private items; the owner's own view simply looked identical to the public one.
 - ✅ **Honest email status.** `/auth/me` reports `instance.emailDelivery` (`smtp` | `outbox`). Without `SMTP_URL`, the verify banner no longer claims "sent". In development it links to **/dev/mailbox** (`GET /api/v1/dev/mailbox`), which shows only the signed-in user's own outbox mail. That endpoint returns 404 in production or when SMTP is configured. The admin overview warns when outgoing email isn't configured. Unit tests: `tests/mail-outbox.test.ts`.
 
+## Version 1.0.0 (2026-11-07)
+- ✅ **Merge two songs** (Mixing Studio): offline, sample-accurate render of deck A → equal-power crossfade → deck B, with optional tempo match and bass swap. The result is previewed, downloaded as 16-bit WAV, or published as a new track (rights permitting, private by default). Capped at 18 minutes. Unit tests: `tests/merge.test.ts`; verified in the browser (56 s render, no clipping).
+- ✅ **Auto transition**: starts the other deck and sweeps the crossfader over 4–32 s.
+- ✅ **Equalizer fixes**: the filter chain worked, but stacked boosts clipped and distorted. It now has automatic headroom computed from the exact biquad response (RBJ formulas, as in Web Audio), a -1 dBFS limiter, a live response curve, the matching preset name, and server preferences applied only once per login (they used to snap sliders back after each save). Unit tests: `tests/eq.test.ts`.
+- ✅ **Bug fixes**: playlist cover mosaics no longer use artwork from tracks the viewer can't see, and one long playlist no longer starves the others; the studio track picker starts with an empty search.
+- ✅ **Desktop app** (`desktop/`, Electron): connects to a configurable server with a first-run setup screen, keeps navigation to that origin, update check via GitHub Releases, NSIS installer. Releases are built by `.github/workflows/desktop-release.yml` on `v*` tags.
+
 ## Known limitations
 - Single-instance defaults: in-memory rate limiter and job queue (swap points documented in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md))
 - Gapless playback is near-gapless (HTMLAudio switch on `ended`); crossfade is sample-accurate
 - No server-side transcoding or waveform generation for files uploaded through the raw API without browser analysis
 - Search uses substring matching (fine for small and medium instances)
 - The CSP allows inline scripts (required by Next.js); nonce-based CSP is planned
+- The desktop installer is not code-signed (SmartScreen warns on first run). The update check needs the repository's Releases to be public.
 - Dev database (PGlite): a single shared session, so `pgbouncer=true` is required and there are 20 connections max (`npm run db:start`). Production uses regular PostgreSQL.
 
 ## Planned next

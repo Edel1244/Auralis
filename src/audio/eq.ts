@@ -10,6 +10,8 @@ export type EqSettings = {
   bass: number; // extra low-shelf boost, 0..12 dB
   treble: number; // high-shelf, -12..12 dB
   balance: number; // -1 (left) .. 1 (right)
+  /** Lower the input gain by the curve's peak boost so boosting never clips. */
+  autoGain: boolean;
   presetId: string | null;
 };
 
@@ -20,6 +22,7 @@ export const DEFAULT_EQ: EqSettings = {
   bass: 0,
   treble: 0,
   balance: 0,
+  autoGain: true,
   presetId: "flat",
 };
 
@@ -52,6 +55,7 @@ export function normalizeEq(input: unknown): EqSettings {
     bass: clampDb(Number(i.bass ?? 0), 0, 12),
     treble: clampDb(Number(i.treble ?? 0)),
     balance: Math.min(1, Math.max(-1, Number(i.balance ?? 0) || 0)),
+    autoGain: typeof i.autoGain === "boolean" ? i.autoGain : DEFAULT_EQ.autoGain,
     presetId: typeof i.presetId === "string" ? i.presetId : null,
   };
 }
@@ -63,4 +67,71 @@ export const dbToGain = (db: number) => Math.pow(10, db / 20);
 export function normalizationGainDb(loudnessDb: number | null | undefined, target = -14) {
   if (loudnessDb == null || !Number.isFinite(loudnessDb)) return 0;
   return Math.min(6, Math.max(-12, target - loudnessDb));
+}
+
+// ───────────── frequency response (RBJ cookbook, same formulas as Web Audio BiquadFilterNode) ─────────────
+
+type BiquadKind = "lowshelf" | "highshelf" | "peaking";
+
+/** Magnitude (dB) of one Web Audio biquad at frequency `f`. */
+export function biquadMagnitudeDb(kind: BiquadKind, f0: number, gainDb: number, q: number, f: number, sampleRate = 48000) {
+  if (gainDb === 0) return 0;
+  const A = Math.pow(10, gainDb / 40);
+  const w0 = (2 * Math.PI * f0) / sampleRate;
+  const cos = Math.cos(w0);
+  const sin = Math.sin(w0);
+  let b0: number, b1: number, b2: number, a0: number, a1: number, a2: number;
+  if (kind === "peaking") {
+    const alpha = sin / (2 * q);
+    b0 = 1 + alpha * A; b1 = -2 * cos; b2 = 1 - alpha * A;
+    a0 = 1 + alpha / A; a1 = -2 * cos; a2 = 1 - alpha / A;
+  } else {
+    // Web Audio shelves use a fixed slope S = 1 (Q is ignored).
+    const alpha = (sin / 2) * Math.sqrt(2);
+    const s = 2 * Math.sqrt(A) * alpha;
+    if (kind === "lowshelf") {
+      b0 = A * (A + 1 - (A - 1) * cos + s); b1 = 2 * A * (A - 1 - (A + 1) * cos); b2 = A * (A + 1 - (A - 1) * cos - s);
+      a0 = A + 1 + (A - 1) * cos + s; a1 = -2 * (A - 1 + (A + 1) * cos); a2 = A + 1 + (A - 1) * cos - s;
+    } else {
+      b0 = A * (A + 1 + (A - 1) * cos + s); b1 = -2 * A * (A - 1 + (A + 1) * cos); b2 = A * (A + 1 + (A - 1) * cos - s);
+      a0 = A + 1 - (A - 1) * cos + s; a1 = 2 * (A - 1 - (A + 1) * cos); a2 = A + 1 - (A - 1) * cos - s;
+    }
+  }
+  const w = (2 * Math.PI * f) / sampleRate;
+  const c1 = Math.cos(w), s1 = Math.sin(w), c2 = Math.cos(2 * w), s2 = Math.sin(2 * w);
+  const nr = b0 + b1 * c1 + b2 * c2, ni = -(b1 * s1 + b2 * s2);
+  const dr = a0 + a1 * c1 + a2 * c2, di = -(a1 * s1 + a2 * s2);
+  return 10 * Math.log10((nr * nr + ni * ni) / (dr * dr + di * di));
+}
+
+export const EQ_Q = 1.1;
+export const BASS_SHELF_HZ = 110;
+export const TREBLE_SHELF_HZ = 7000;
+
+/** Combined EQ curve (dB, excluding preamp) at frequency `f`, mirroring the engine's filter chain. */
+export function eqResponseDb(eq: EqSettings, f: number, sampleRate = 48000) {
+  if (!eq.enabled) return 0;
+  let db = 0;
+  EQ_BANDS.forEach((f0, i) => {
+    const kind: BiquadKind = i === 0 ? "lowshelf" : i === EQ_BANDS.length - 1 ? "highshelf" : "peaking";
+    db += biquadMagnitudeDb(kind, f0, eq.gains[i], EQ_Q, f, sampleRate);
+  });
+  db += biquadMagnitudeDb("lowshelf", BASS_SHELF_HZ, eq.bass, EQ_Q, f, sampleRate);
+  db += biquadMagnitudeDb("highshelf", TREBLE_SHELF_HZ, eq.treble, EQ_Q, f, sampleRate);
+  return db;
+}
+
+/** Log-spaced frequencies across the audible range, for curves and peak search. */
+export function logFrequencies(n = 120, min = 20, max = 20000) {
+  return Array.from({ length: n }, (_, i) => min * Math.pow(max / min, i / (n - 1)));
+}
+
+/**
+ * Highest boost (dB) of the EQ curve across the audible range. Stacked boosts
+ * push full-scale audio past 0 dBFS and clip; the engine lowers its input gain
+ * by this amount ("auto headroom") so boosting never distorts.
+ */
+export function eqPeakDb(eq: EqSettings, sampleRate = 48000) {
+  if (!eq.enabled) return 0;
+  return Math.max(0, ...logFrequencies(160).map((f) => eqResponseDb(eq, f, sampleRate)));
 }

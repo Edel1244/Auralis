@@ -68,6 +68,10 @@ Update later with `sudo bash deploy/update.sh` (backs up first). On public serve
 
 Step-by-step guide in Turkish: [docs/DEPLOY.tr.md](docs/DEPLOY.tr.md). Using your own proxy instead of Caddy? Run only `docker-compose.yml` and proxy to `127.0.0.1:3000`, with HSTS enabled.
 
+## Desktop app (Windows)
+
+Download `AURALIS-Setup-<version>.exe` from [Releases](https://github.com/Edel1244/Auralis/releases) and enter your server's address on first launch. The app checks for new versions itself. Building and releasing: [desktop/README.md](desktop/README.md).
+
 ## Local development (no Docker needed)
 
 Requirements: Node.js 20+ (24 LTS recommended).

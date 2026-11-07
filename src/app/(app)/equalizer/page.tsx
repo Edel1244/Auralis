@@ -9,7 +9,8 @@ import { Visualizer } from "@/player/Visualizer";
 import { useApi } from "@/lib/useApi";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/cn";
-import { EQ_BANDS, EQ_MAX_DB, EQ_MIN_DB, EQ_PRESETS } from "@/audio/eq";
+import { EQ_BANDS, EQ_MAX_DB, EQ_MIN_DB, EQ_PRESETS, eqPeakDb } from "@/audio/eq";
+import { EqCurve } from "@/components/eq/EqCurve";
 import { Button, IconButton } from "@/components/ui/Button";
 import { Input, Select } from "@/components/ui/Field";
 import { Switch } from "@/components/ui/misc";
@@ -71,6 +72,8 @@ export default function EqualizerPage() {
   const [name, setName] = useState("");
   const custom = presets.data?.items ?? [];
   const playing = snapshot.status === "playing";
+  // Show the built-in preset whose curve matches, even if it was set by hand.
+  const shownPreset = eq.presetId ?? EQ_PRESETS.find((p) => p.gains.every((g, i) => g === eq.gains[i]))?.id ?? "";
 
   const setBand = (i: number, v: number) => {
     const gains = [...eq.gains];
@@ -95,7 +98,7 @@ export default function EqualizerPage() {
         <div className="mb-5 flex flex-wrap items-center gap-2">
           <Select
             aria-label={t("eq.preset")}
-            value={eq.presetId ?? ""}
+            value={shownPreset}
             onChange={(e) => selectPreset(e.target.value)}
             className="h-10 w-56"
             disabled={!eq.enabled}
@@ -161,6 +164,10 @@ export default function EqualizerPage() {
           )}
         </div>
 
+        <div className={cn("mb-5 rounded-2xl bg-black/20 px-2 text-muted", !eq.enabled && "opacity-40")}>
+          <EqCurve eq={eq} label={t("eq.response")} />
+        </div>
+
         {/* 10-band graphic EQ */}
         <div className={cn("grid grid-cols-10 gap-1 sm:gap-3", !eq.enabled && "opacity-40")} role="group" aria-label={t("eq.title")}>
           {EQ_BANDS.map((f, i) => (
@@ -197,6 +204,12 @@ export default function EqualizerPage() {
             format={(v) => (Math.abs(v) < 0.01 ? "C" : v < 0 ? `L ${Math.round(-v * 100)}` : `R ${Math.round(v * 100)}`)}
             onChange={(v) => setEq({ balance: v })}
           />
+        </div>
+        <div className={cn("mt-5 rounded-2xl border border-line p-4", !eq.enabled && "opacity-50")}>
+          <Switch checked={eq.autoGain} onChange={(v) => setEq({ autoGain: v })} label={t("eq.autoGain")} disabled={!eq.enabled} />
+          <p className="mt-1 text-xs text-subtle">
+            {eq.autoGain ? t("eq.autoGainHint", { db: eqPeakDb(eq).toFixed(1) }) : t("eq.autoGainOff")}
+          </p>
         </div>
       </section>
 

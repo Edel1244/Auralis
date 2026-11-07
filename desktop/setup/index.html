@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'none'" />
+    <title>AURALIS</title>
+    <link rel="stylesheet" href="setup.css" />
+  </head>
+  <body>
+    <main class="card">
+      <svg class="logo" viewBox="0 0 64 64" fill="none" aria-hidden="true">
+        <defs>
+          <linearGradient id="g" x1="8" y1="56" x2="56" y2="8" gradientUnits="userSpaceOnUse">
+            <stop stop-color="#008CFF" />
+            <stop offset="1" stop-color="#3DF2FF" />
+          </linearGradient>
+        </defs>
+        <rect width="64" height="64" rx="16" fill="#080B10" />
+        <path d="M47.6 47.6A22 22 0 1 1 53.9 30" stroke="url(#g)" stroke-width="3.5" stroke-linecap="round" />
+        <circle cx="53.6" cy="37.6" r="2.2" fill="#3DF2FF" />
+        <path d="M20.5 45 32 19l11.5 26" stroke="url(#g)" stroke-width="4.6" stroke-linecap="round" stroke-linejoin="round" />
+      </svg>
+      <h1 class="wordmark">AURALIS</h1>
+      <p class="lead" data-i18n="lead"></p>
+
+      <p class="alert" id="reason" role="alert" hidden></p>
+
+      <form id="form" novalidate>
+        <label for="server" data-i18n="label"></label>
+        <input id="server" name="server" type="url" inputmode="url" autocomplete="url" spellcheck="false" required />
+        <p class="hint" data-i18n="hint"></p>
+        <p class="status" id="status" role="status" aria-live="polite"></p>
+        <button id="connect" type="submit" data-i18n="connect"></button>
+      </form>
+
+      <p class="foot"><span data-i18n="version"></span> <span id="version"></span></p>
+    </main>
+    <script src="setup.js"></script>
+  </body>
+</html>

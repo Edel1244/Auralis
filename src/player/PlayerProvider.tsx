@@ -189,9 +189,16 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Server-side preferences win after login.
+  // Server-side preferences win once after login. Later `preferences` changes are
+  // echoes of our own saves; re-applying them would snap sliders back mid-drag.
+  const prefsApplied = useRef(false);
   useEffect(() => {
-    if (!preferences || !engineRef.current) return;
+    if (!preferences) {
+      prefsApplied.current = false;
+      return;
+    }
+    if (prefsApplied.current || !engineRef.current) return;
+    prefsApplied.current = true;
     if (preferences.playback && Object.keys(preferences.playback).length) {
       const s = { ...DEFAULT_PLAYBACK, ...(preferences.playback as Partial<PlaybackSettings>) };
       settingsRef.current = s;

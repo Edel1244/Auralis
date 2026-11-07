@@ -48,3 +48,7 @@ next-env.d.ts
 
 # local tool config
 /.claude/
+
+# desktop app
+/desktop/node_modules
+/desktop/dist

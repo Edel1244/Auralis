@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Electron desktop shell: its own package and lint-free plain JS.
+    "desktop/**",
   ]),
 ]);
 

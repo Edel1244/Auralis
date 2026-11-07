@@ -1,5 +1,5 @@
 import { Emitter } from "./emitter";
-import { dbToGain, DEFAULT_EQ, EQ_BANDS, normalizeEq, type EqSettings } from "./eq";
+import { BASS_SHELF_HZ, dbToGain, DEFAULT_EQ, EQ_BANDS, EQ_Q, eqPeakDb, normalizeEq, TREBLE_SHELF_HZ, type EqSettings } from "./eq";
 
 /**
  * AURALIS playback engine.
@@ -9,11 +9,13 @@ import { dbToGain, DEFAULT_EQ, EQ_BANDS, normalizeEq, type EqSettings } from "./
  * both feed a Web Audio graph:
  *
  *   slotA ─ gainA ┐
- *                 ├─ preamp ─ 10×EQ ─ bass shelf ─ treble shelf ─ balance ─ master ─ analyser ─ out
+ *                 ├─ preamp ─ 10×EQ ─ bass shelf ─ treble shelf ─ balance ─ limiter ─ master ─ analyser ─ out
  *   slotB ─ gainB ┘
  *
  * The idle slot preloads the next source, enabling near-gapless transitions
  * and equal-power crossfades. Per-slot gain also carries loudness normalization.
+ * The preamp subtracts the EQ curve's peak boost (auto headroom) and a brickwall-ish
+ * limiter catches what is left, so EQ boosts never clip into distortion.
  */
 
 export type EngineStatus = "idle" | "loading" | "playing" | "paused" | "error";
@@ -63,6 +65,7 @@ export class AudioEngine {
   private bassShelf: BiquadFilterNode | null = null;
   private trebleShelf: BiquadFilterNode | null = null;
   private panner: StereoPannerNode | null = null;
+  private limiter: DynamicsCompressorNode | null = null;
   private master: GainNode | null = null;
   private analyser: AnalyserNode | null = null;
 
@@ -116,22 +119,28 @@ export class AudioEngine {
       const f = ctx.createBiquadFilter();
       f.type = i === 0 ? "lowshelf" : i === EQ_BANDS.length - 1 ? "highshelf" : "peaking";
       f.frequency.value = freq;
-      f.Q.value = 1.1;
+      f.Q.value = EQ_Q;
       return f;
     });
     this.bassShelf = ctx.createBiquadFilter();
     this.bassShelf.type = "lowshelf";
-    this.bassShelf.frequency.value = 110;
+    this.bassShelf.frequency.value = BASS_SHELF_HZ;
     this.trebleShelf = ctx.createBiquadFilter();
     this.trebleShelf.type = "highshelf";
-    this.trebleShelf.frequency.value = 7000;
+    this.trebleShelf.frequency.value = TREBLE_SHELF_HZ;
     this.panner = ctx.createStereoPanner();
+    this.limiter = ctx.createDynamicsCompressor();
+    this.limiter.threshold.value = -1;
+    this.limiter.knee.value = 0;
+    this.limiter.ratio.value = 20;
+    this.limiter.attack.value = 0.002;
+    this.limiter.release.value = 0.2;
     this.master = ctx.createGain();
     this.analyser = ctx.createAnalyser();
     this.analyser.fftSize = 2048;
     this.analyser.smoothingTimeConstant = 0.8;
 
-    const chain: AudioNode[] = [this.preamp, ...this.filters, this.bassShelf, this.trebleShelf, this.panner, this.master, this.analyser];
+    const chain: AudioNode[] = [this.preamp, ...this.filters, this.bassShelf, this.trebleShelf, this.panner, this.limiter, this.master, this.analyser];
     chain.reduce((a, b) => (a.connect(b), b));
     this.analyser.connect(ctx.destination);
 
@@ -399,7 +408,8 @@ export class AudioEngine {
     const t = this.ctx.currentTime;
     const on = this.eq.enabled;
     this.filters.forEach((f, i) => f.gain.setTargetAtTime(on ? this.eq.gains[i] : 0, t, 0.02));
-    this.preamp!.gain.setTargetAtTime(dbToGain(on ? this.eq.preamp : 0), t, 0.02);
+    const headroom = on && this.eq.autoGain ? eqPeakDb(this.eq, this.ctx.sampleRate) : 0;
+    this.preamp!.gain.setTargetAtTime(dbToGain(on ? this.eq.preamp - headroom : 0), t, 0.02);
     this.bassShelf!.gain.setTargetAtTime(on ? this.eq.bass : 0, t, 0.02);
     this.trebleShelf!.gain.setTargetAtTime(on ? this.eq.treble : 0, t, 0.02);
     this.panner!.pan.setTargetAtTime(this.eq.balance, t, 0.02);

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Disc3, Circle, Square, Download, Save, FolderOpen, Trash2 } from "lucide-react";
+import { Disc3, Circle, Square, Download, Save, FolderOpen, Trash2, Merge, Shuffle } from "lucide-react";
 import { useT, useI18n } from "@/i18n/I18nProvider";
 import { RequireAuth } from "@/components/layout/RequireAuth";
 import { useSession } from "@/state/session";
@@ -9,6 +9,7 @@ import { usePlayer } from "@/player/PlayerProvider";
 import { Mixer } from "@/audio/studio/Mixer";
 import { DeckPanel } from "@/components/studio/DeckPanel";
 import { TrackPicker } from "@/components/studio/TrackPicker";
+import { MergeModal, exportable } from "@/components/studio/MergeModal";
 import { Button, IconButton } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Field";
 import { Modal } from "@/components/ui/Modal";
@@ -16,7 +17,7 @@ import { useToast } from "@/components/ui/Toast";
 import { LogoMark } from "@/components/brand/Logo";
 import { api } from "@/lib/api";
 import { formatDuration } from "@/lib/format";
-import type { Me, Track } from "@/lib/types";
+import type { Track } from "@/lib/types";
 
 type Mix = { id: string; title: string; updatedAt: string; data: MixData };
 type DeckSave = {
@@ -34,8 +35,6 @@ function localStamp() {
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}-${p(d.getHours())}-${p(d.getMinutes())}-${p(d.getSeconds())}`;
 }
 
-/** Export is allowed only when every track used is the user's own, public domain or Creative Commons. */
-const exportable = (tr: Track, me: Me) => tr.owner.id === me.id || tr.ownership === "PUBLIC_DOMAIN" || tr.ownership === "CREATIVE_COMMONS";
 
 function MasterMeter({ mixer }: { mixer: Mixer }) {
   const canvas = useRef<HTMLCanvasElement>(null);
@@ -86,6 +85,8 @@ function Studio() {
   const [sessionOpen, setSessionOpen] = useState(false);
   const [sessionName, setSessionName] = useState("");
   const [currentSession, setCurrentSession] = useState<Mix | null>(null);
+  const [mergeOpen, setMergeOpen] = useState(false);
+  const [autoSec, setAutoSec] = useState(8);
 
   useEffect(() => () => mixer?.dispose(), [mixer]);
   useEffect(() => () => void (recorded && URL.revokeObjectURL(recorded.url)), [recorded]);
@@ -161,7 +162,10 @@ function Studio() {
       <div className="flex flex-wrap items-center gap-3">
         <h1 className="font-display text-3xl font-bold tracking-tight">{t("studio.title")}</h1>
         {currentSession && <span className="rounded-full bg-surface-2 px-3 py-1 text-xs text-muted">{currentSession.title}</span>}
-        <div className="ml-auto flex gap-2">
+        <div className="ml-auto flex flex-wrap gap-2">
+          <Button size="sm" onClick={() => setMergeOpen(true)}>
+            <Merge size={15} /> {t("studio.merge")}
+          </Button>
           <Button
             variant="secondary"
             size="sm"
@@ -233,6 +237,33 @@ function Studio() {
             />
           </label>
           <div className="mt-auto space-y-3">
+            <div className="flex items-center gap-2">
+              <Button
+                variant="secondary"
+                size="sm"
+                className="flex-1"
+                title={t("studio.autoMixHint", { n: autoSec })}
+                disabled={!loaded.a || !loaded.b}
+                onClick={() => {
+                  player.engine?.pause();
+                  mixer.autoTransition(autoSec, setXfade);
+                }}
+              >
+                <Shuffle size={14} /> {t("studio.autoMix")}
+              </Button>
+              <select
+                aria-label={t("studio.overlap")}
+                value={autoSec}
+                onChange={(e) => setAutoSec(Number(e.target.value))}
+                className="h-9 rounded-full border border-line bg-surface-2 px-2 text-xs"
+              >
+                {[4, 8, 16, 32].map((n) => (
+                  <option key={n} value={n}>
+                    {n}s
+                  </option>
+                ))}
+              </select>
+            </div>
             <div className="flex justify-between text-xs font-bold">
               <span style={{ color: COLORS.a }}>A</span>
               <span className="text-subtle">{t("studio.crossfader")}</span>
@@ -245,8 +276,9 @@ function Studio() {
               step={0.01}
               value={xfade}
               aria-label={t("studio.crossfader")}
-              onDoubleClick={() => (setXfade(0), mixer.setCrossfader(0))}
+              onDoubleClick={() => (mixer.cancelAutoTransition(), setXfade(0), mixer.setCrossfader(0))}
               onChange={(e) => {
+                mixer.cancelAutoTransition();
                 const v = Number(e.target.value);
                 setXfade(v);
                 mixer.setCrossfader(v);
@@ -316,6 +348,8 @@ function Studio() {
           onPlayStart={() => player.engine?.pause()}
         />
       </div>
+
+      <MergeModal open={mergeOpen} onClose={() => setMergeOpen(false)} mixer={mixer} tracks={loaded} />
 
       <TrackPicker open={picker !== null} onClose={() => setPicker(null)} onPick={(tr) => picker && void loadTrack(picker, tr)} />
 
