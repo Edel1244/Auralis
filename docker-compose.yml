@@ -31,7 +31,9 @@ services:
       db:
         condition: service_healthy
     ports:
-      - "${AURALIS_PORT:-3000}:3000"
+      # Bound to the local machine by default. On a server, Caddy (deploy/docker-compose.prod.yml)
+      # is the only public entry point. Set AURALIS_BIND=0.0.0.0 to expose it on your LAN.
+      - "${AURALIS_BIND:-127.0.0.1}:${AURALIS_PORT:-3000}:3000"
     environment:
       DATABASE_URL: postgresql://auralis:${POSTGRES_PASSWORD}@db:5432/auralis?connection_limit=10
       AUTH_SECRET: ${AUTH_SECRET:?Set AUTH_SECRET in .env (at least 32 random characters)}
@@ -48,6 +50,7 @@ services:
       MAX_UPLOAD_MB: ${MAX_UPLOAD_MB:-200}
       DEFAULT_STORAGE_QUOTA_MB: ${DEFAULT_STORAGE_QUOTA_MB:-2048}
       REQUIRE_VERIFIED_EMAIL_FOR_UPLOAD: ${REQUIRE_VERIFIED_EMAIL_FOR_UPLOAD:-false}
+      BOOTSTRAP_ADMIN_EMAIL: ${BOOTSTRAP_ADMIN_EMAIL:-}
     volumes:
       # Local media storage (when STORAGE_DRIVER=local) and the dev mail outbox.
       - media:/app/.data

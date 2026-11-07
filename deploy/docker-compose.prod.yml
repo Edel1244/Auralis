@@ -1,0 +1,34 @@
+# Production override: adds Caddy as the public HTTPS entry point.
+#
+#   docker compose -f docker-compose.yml -f deploy/docker-compose.prod.yml up -d --build
+#
+# Caddy obtains and renews a free TLS certificate (Let's Encrypt) for AURALIS_DOMAIN
+# automatically. The domain's DNS A/AAAA records must point at this server and
+# ports 80 and 443 must be reachable.
+
+services:
+  app:
+    environment:
+      APP_URL: https://${AURALIS_DOMAIN:?Set AURALIS_DOMAIN in .env}
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    depends_on:
+      app:
+        condition: service_healthy
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp" # HTTP/3
+    environment:
+      AURALIS_DOMAIN: ${AURALIS_DOMAIN:?Set AURALIS_DOMAIN in .env}
+      ACME_EMAIL: ${ACME_EMAIL:?Set ACME_EMAIL in .env (certificate expiry notices)}
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+
+volumes:
+  caddy-data:
+  caddy-config:

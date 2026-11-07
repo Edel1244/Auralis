@@ -24,6 +24,14 @@ const schema = z.object({
   MAX_UPLOAD_MB: z.coerce.number().int().positive().default(200),
   DEFAULT_STORAGE_QUOTA_MB: z.coerce.number().int().positive().default(2048),
   REQUIRE_VERIFIED_EMAIL_FOR_UPLOAD: bool,
+  /** When set, only this address becomes admin, and only after verifying it. */
+  BOOTSTRAP_ADMIN_EMAIL: z
+    .string()
+    .trim()
+    .toLowerCase()
+    .optional()
+    .transform((v) => (v ? v : undefined))
+    .pipe(z.email("BOOTSTRAP_ADMIN_EMAIL must be an email address").optional()),
 });
 
 export type Env = z.infer<typeof schema>;

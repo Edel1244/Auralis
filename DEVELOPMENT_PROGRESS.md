@@ -19,6 +19,8 @@ Legend: ✅ implemented and verified · ☑️ implemented, verified indirectly 
 | CI (`.github/workflows/ci.yml`) | ✅ All three jobs pass on GitHub Actions (`Edel1244/Auralis`): checks, integration (PostgreSQL 17 + production build + smoke test), Docker |
 | Docker | ✅ Image builds in CI; the Compose stack (PostgreSQL + app) starts, migrations apply, health checks pass, the smoke test passes against the container, and the image contains no secrets or local data. First-run fixes: route types generated before `tsc`, `prisma validate` given a placeholder URL at build time, and no required variables in the optional MinIO profile |
 | Docker with S3 (`--profile s3`, MinIO) | 🟡 Not exercised in CI; the local storage driver is what's tested |
+| Production server kit (`deploy/`) | ☑️ Caddy HTTPS override, `setup-server.sh`, `update.sh`, Turkish guide ([docs/DEPLOY.tr.md](docs/DEPLOY.tr.md)). Scripts pass `bash -n`; config covered by `tests/deploy-config.test.ts`. **Not yet run on a real server** |
+| Admin bootstrap (`BOOTSTRAP_ADMIN_EMAIL`) | ✅ 8/8 on a fresh production build: an earlier sign-up isn't promoted; the configured address is promoted only after email verification (case-insensitive); later sign-ups stay regular |
 
 ## Requirements checklist
 

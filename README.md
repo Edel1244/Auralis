@@ -48,7 +48,7 @@ Then start the stack:
 docker compose up -d --build
 ```
 
-Open `http://localhost:3000` and register. **The first account becomes the administrator.** Migrations run automatically when the container starts, and `/api/v1/health` reports readiness.
+Open `http://localhost:3000` and register. **The first account becomes the administrator** (unless `BOOTSTRAP_ADMIN_EMAIL` is set; see below). Migrations run automatically when the container starts, and `/api/v1/health` reports readiness.
 
 To use S3-compatible storage with the bundled MinIO, set `STORAGE_DRIVER=s3`, `S3_ACCESS_KEY_ID` and `S3_SECRET_ACCESS_KEY` in `.env`, then run:
 
@@ -56,7 +56,17 @@ To use S3-compatible storage with the bundled MinIO, set `STORAGE_DRIVER=s3`, `S
 docker compose --profile s3 up -d --build
 ```
 
-Put AURALIS behind a TLS-terminating reverse proxy (Caddy, nginx, Traefik) in production, and enable HSTS there.
+## Production server (HTTPS)
+
+On a fresh Ubuntu server with a domain pointing at it, one script sets up everything: Docker, firewall, generated secrets, Caddy with automatic Let's Encrypt certificates, and nightly backups.
+
+```bash
+sudo bash deploy/setup-server.sh
+```
+
+Update later with `sudo bash deploy/update.sh` (backs up first). On public servers the script sets `BOOTSTRAP_ADMIN_EMAIL`, so only that address becomes administrator, and only after verifying it; signing up first doesn't grant admin.
+
+Step-by-step guide in Turkish: [docs/DEPLOY.tr.md](docs/DEPLOY.tr.md). Using your own proxy instead of Caddy? Run only `docker-compose.yml` and proxy to `127.0.0.1:3000`, with HSTS enabled.
 
 ## Local development (no Docker needed)
 
@@ -111,6 +121,8 @@ All configuration is through environment variables, validated at startup (`src/s
 | `MAX_UPLOAD_MB` | `200` | Per-file upload limit |
 | `DEFAULT_STORAGE_QUOTA_MB` | `2048` | Per-user quota (admins can change it per user) |
 | `REQUIRE_VERIFIED_EMAIL_FOR_UPLOAD` | `false` | Recommended `true` on public instances |
+| `BOOTSTRAP_ADMIN_EMAIL` | empty | If set, only this address becomes admin, after email verification (recommended on public servers) |
+| `AURALIS_DOMAIN` / `ACME_EMAIL` | empty | Domain and certificate-notice email for the Caddy production setup |
 
 ## Architecture at a glance
 

@@ -50,6 +50,44 @@ describe("docker-compose.yml", () => {
   });
 });
 
+describe("production deployment (deploy/)", () => {
+  const prod = parse(read("deploy/docker-compose.prod.yml")) as { services: Record<string, Service & { ports?: string[]; volumes?: string[] }> };
+  const caddyfile = read("deploy/Caddyfile");
+
+  it("binds the app to localhost by default so only the proxy is public", () => {
+    const ports = (compose.services.app as { ports?: string[] }).ports ?? [];
+    expect(ports).toHaveLength(1);
+    expect(ports[0]).toMatch(/^\$\{AURALIS_BIND:-127\.0\.0\.1\}:/);
+  });
+
+  it("exposes Caddy on 80/443 and proxies to the app container", () => {
+    const ports = prod.services.caddy.ports ?? [];
+    expect(ports).toEqual(expect.arrayContaining(["80:80", "443:443"]));
+    expect(caddyfile).toMatch(/reverse_proxy app:3000/);
+    expect(caddyfile).toMatch(/\{\$AURALIS_DOMAIN\}/);
+    expect(prod.services.caddy.volumes).toEqual(expect.arrayContaining(["./deploy/Caddyfile:/etc/caddy/Caddyfile:ro"]));
+  });
+
+  it("serves the app over HTTPS on the configured domain", () => {
+    expect(String(prod.services.app.environment?.APP_URL)).toMatch(/^https:\/\/\$\{AURALIS_DOMAIN/);
+  });
+
+  it("only requires variables that .env.example defines", () => {
+    const example = envFile(read(".env.example"));
+    const required = Object.values(prod.services).flatMap(requiredVars);
+    expect(required).toEqual(expect.arrayContaining(["AURALIS_DOMAIN", "ACME_EMAIL"]));
+    for (const v of required) expect(example, `.env.example must define ${v}`).toHaveProperty(v);
+  });
+
+  it("passes the admin bootstrap address to the app", () => {
+    expect(compose.services.app.environment).toHaveProperty("BOOTSTRAP_ADMIN_EMAIL");
+  });
+
+  it("ships shell scripts with LF line endings", () => {
+    for (const f of ["deploy/setup-server.sh", "deploy/update.sh", "scripts/backup.sh"]) expect(read(f), f).not.toContain("\r");
+  });
+});
+
 describe("Dockerfile", () => {
   const dockerfile = read("Dockerfile");
   const rules = read(".dockerignore")

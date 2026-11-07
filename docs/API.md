@@ -21,7 +21,7 @@ Base path: `/api/v1`. All bodies are JSON unless noted (`multipart/form-data` fo
 
 | Method | Path | Access | Body / notes |
 |---|---|---|---|
-| POST | `/auth/register` | public | `{ email, username, displayName, password, acceptTerms: true }`; first user becomes ADMIN |
+| POST | `/auth/register` | public | `{ email, username, displayName, password, acceptTerms: true }`; the first user becomes ADMIN, unless `BOOTSTRAP_ADMIN_EMAIL` is set (then only that address, after verification) |
 | POST | `/auth/login` | public | `{ identifier (email or username), password }` |
 | POST | `/auth/logout` | optional | |
 | GET | `/auth/me` | optional | `{ user, preferences }` (`user: null` when logged out) |

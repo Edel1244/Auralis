@@ -22,7 +22,12 @@ export async function registerUser(input: z.infer<typeof registerSchema>, locale
       { field: existing.username === input.username ? "username" : "email" },
     );
   }
-  const isFirstUser = (await db.user.count()) === 0;
+  // Admin bootstrap. With BOOTSTRAP_ADMIN_EMAIL set (recommended for public servers),
+  // nobody becomes admin at sign-up: that address is promoted only once its email is
+  // verified (see promoteBootstrapAdmin). Without it, the first account becomes admin,
+  // which is convenient locally but racy on an Internet-facing instance.
+  const bootstrapEmail = env().BOOTSTRAP_ADMIN_EMAIL;
+  const isFirstUser = !bootstrapEmail && (await db.user.count()) === 0;
   const user = await db.user.create({
     data: {
       email: input.email,
@@ -58,10 +63,26 @@ export async function authenticate(input: z.infer<typeof loginSchema>) {
   return user;
 }
 
+/**
+ * Promotes the account whose verified email matches BOOTSTRAP_ADMIN_EMAIL to ADMIN,
+ * but only while the instance has no administrator yet. Proving control of the inbox
+ * (verification link or password reset) is required, so knowing the address isn't enough.
+ */
+async function promoteBootstrapAdmin(userId: string) {
+  const bootstrapEmail = env().BOOTSTRAP_ADMIN_EMAIL;
+  if (!bootstrapEmail) return;
+  const user = await db.user.findUnique({ where: { id: userId }, select: { email: true, role: true, emailVerifiedAt: true } });
+  if (!user || user.role === "ADMIN" || !user.emailVerifiedAt || user.email !== bootstrapEmail) return;
+  if ((await db.user.count({ where: { role: "ADMIN" } })) > 0) return;
+  await db.user.update({ where: { id: userId }, data: { role: "ADMIN" } });
+  logger.info("bootstrap_admin_promoted", { userId });
+}
+
 export async function verifyEmail(token: string) {
   const userId = await consumeToken(token, "EMAIL_VERIFY");
   if (!userId) throw new ApiError("BAD_REQUEST", "This verification link is invalid or has expired");
   await db.user.update({ where: { id: userId }, data: { emailVerifiedAt: new Date() } });
+  await promoteBootstrapAdmin(userId);
 }
 
 export async function resendVerification(userId: string) {
@@ -92,6 +113,7 @@ export async function resetPassword(token: string, password: string) {
     }),
     db.session.deleteMany({ where: { userId } }), // sign out everywhere
   ]);
+  await promoteBootstrapAdmin(userId);
 }
 
 export async function changePassword(userId: string, current: string, next: string, keepSessionId: string) {

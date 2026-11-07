@@ -1,0 +1,17 @@
+# AURALIS reverse proxy: automatic HTTPS (Let's Encrypt) in front of the app container.
+{
+	email {$ACME_EMAIL}
+}
+
+{$AURALIS_DOMAIN} {
+	encode zstd gzip
+
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		-Server
+	}
+
+	# The app handles uploads (up to MAX_UPLOAD_MB) and HTTP Range audio streaming;
+	# Caddy passes both through unchanged and sets X-Forwarded-For for rate limiting.
+	reverse_proxy app:3000
+}
