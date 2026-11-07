@@ -72,6 +72,10 @@ Step-by-step guide in Turkish: [docs/DEPLOY.tr.md](docs/DEPLOY.tr.md). Using you
 
 Download `AURALIS-Setup-<version>.exe` from [Releases](https://github.com/Edel1244/Auralis/releases) and enter your server's address on first launch. The app checks for new versions itself. Building and releasing: [desktop/README.md](desktop/README.md).
 
+## Android app
+
+Download `AURALIS-Android-<version>.apk` from [Releases](https://github.com/Edel1244/Auralis/releases) (the ones marked **(Android)**) and enter your server's address on first launch. Building, signing and releasing: [android/README.md](android/README.md).
+
 ## Local development (no Docker needed)
 
 Requirements: Node.js 20+ (24 LTS recommended).

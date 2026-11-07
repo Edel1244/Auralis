@@ -5,7 +5,9 @@
 const { app, dialog, shell } = require("electron");
 
 const REPO = "Edel1244/Auralis";
-const RELEASES_API = `https://api.github.com/repos/${REPO}/releases/latest`;
+// Desktop releases are tagged "vX.Y.Z"; Android ones "android-vX.Y.Z" share the same list.
+const RELEASES_API = `https://api.github.com/repos/${REPO}/releases?per_page=30`;
+const DESKTOP_TAG = /^v\d+\.\d+\.\d+$/;
 
 /** Compares "1.2.3" style versions (a leading "v" is ignored). Returns 1, 0 or -1. */
 function compareVersions(a, b) {
@@ -33,7 +35,12 @@ async function checkForUpdates(win, opts) {
       signal: AbortSignal.timeout(10000),
     });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const rel = await res.json();
+    const list = await res.json();
+    const rel = Array.isArray(list) ? list.find((r) => !r.draft && !r.prerelease && DESKTOP_TAG.test(String(r.tag_name))) : null;
+    if (!rel) {
+      if (opts.manual) await dialog.showMessageBox(win, { type: "info", title: T.title, message: T.latest });
+      return;
+    }
     const latest = String(rel.tag_name || "").replace(/^v/i, "");
     if (!latest || compareVersions(latest, current) <= 0) {
       if (opts.manual) await dialog.showMessageBox(win, { type: "info", title: T.title, message: T.latest });

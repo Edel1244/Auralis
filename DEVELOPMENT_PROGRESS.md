@@ -105,6 +105,7 @@ Legend: ✅ implemented and verified · ☑️ implemented, verified indirectly 
 - ✅ **Equalizer fixes**: the filter chain worked, but stacked boosts clipped and distorted. It now has automatic headroom computed from the exact biquad response (RBJ formulas, as in Web Audio), a -1 dBFS limiter, a live response curve, the matching preset name, and server preferences applied only once per login (they used to snap sliders back after each save). Unit tests: `tests/eq.test.ts`.
 - ✅ **Bug fixes**: playlist cover mosaics no longer use artwork from tracks the viewer can't see, and one long playlist no longer starves the others; the studio track picker starts with an empty search.
 - ✅ **Desktop app** (`desktop/`, Electron): connects to a configurable server with a first-run setup screen, keeps navigation to that origin, update check via GitHub Releases, NSIS installer. Releases are built by `.github/workflows/desktop-release.yml` on `v*` tags.
+- ✅ **Android app** (`android/`, native Java WebView): first-run server setup through an `auralis-setup://` scheme honoured only on the bundled page, origin-locked navigation, file chooser for uploads, DownloadManager downloads, edge-to-edge insets, update check against `android-v*` releases. Built and signed by `.github/workflows/android-release.yml` (key held in repository secrets). Releases are titled "(Android)" and "(Desktop)".
 
 ## Known limitations
 - Single-instance defaults: in-memory rate limiter and job queue (swap points documented in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md))
@@ -112,6 +113,7 @@ Legend: ✅ implemented and verified · ☑️ implemented, verified indirectly 
 - No server-side transcoding or waveform generation for files uploaded through the raw API without browser analysis
 - Search uses substring matching (fine for small and medium instances)
 - The CSP allows inline scripts (required by Next.js); nonce-based CSP is planned
+- Android: Mixing Studio WAV exports (blob URLs) can't be downloaded inside the app; playback continues in the background but without a media notification.
 - The desktop installer is not code-signed (SmartScreen warns on first run). The update check needs the repository's Releases to be public.
 - Dev database (PGlite): a single shared session, so `pgbouncer=true` is required and there are 20 connections max (`npm run db:start`). Production uses regular PostgreSQL.
 

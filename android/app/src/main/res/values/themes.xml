@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.Auralis" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/au_bg</item>
+        <item name="android:colorPrimary">@color/au_primary</item>
+        <item name="android:colorAccent">@color/au_primary</item>
+        <item name="android:statusBarColor">@color/au_bg</item>
+        <item name="android:navigationBarColor">@color/au_bg</item>
+    </style>
+</resources>
